@@ -1,0 +1,1 @@
+Run, "C:\Users\%USERNAME%\PycharmProjects\pythonProject\venv\Scripts\python.exe" "C:/Users/%USERNAME%/Documents/scripts/latin-leven/wiktionary_latin_py/wiktionary_latin.py", , Min

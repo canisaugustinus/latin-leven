@@ -1,0 +1,239 @@
+<script src="/static/node_modules/jquery.js"></script>
+<script src="/static/node_modules/socket.io.js"></script>
+<script type="text/javascript" charset="utf/8">
+var origin = window.location.origin;
+var socket = io.connect(origin);
+
+function sendClickAndQuery(button_name) {
+    if (button_name.startsWith('domus')) {
+        window.location = origin;
+    } else {
+        window.location = origin + '/' + button_name + '?quaestio=' + $('#Query_Field').val();
+    }
+};
+
+function middleClickAndQuery(event, button_name) {
+    event.preventDefault();
+    if (button_name.startsWith('domus')) {
+        window.open(origin, '_blank');
+    } else {
+        window.open(origin + '/' + button_name + '?quaestio=' + $('#Query_Field').val(), '_blank');
+    }
+};
+
+function setPreviousSearchTable(data) {
+    searches_so_far = data.searches;
+    var table = $('#Previous_Search_Table');
+    var tableBody = $('#Previous_Search_Table_Body');
+
+    var i = 0;
+    var iFinal = 0;
+    for (const search of searches_so_far) {
+        var url = origin + '/perquire?quaestio=' + search;
+        var newRow = '<tr><td><a href="'+url+'" target="_self">'+search+'</a></td></tr>';
+        if (tableBody.children().length > i) {
+          tableBody.children().eq(i).replaceWith(newRow);
+        } else {
+          tableBody.append(newRow);
+        }
+        iFinal = i;
+        i = i + 1;
+    }
+    for (let i = tableBody.children().length - 1; i > iFinal; i--) {
+       tableBody.children().eq(i).replaceWith("");
+    }
+};
+
+function setResultTable(data) {
+    titles_urls = data.table;
+    var table = $('#Result_Table');
+    var tableBody = $('#Result_Table_Body');
+
+    var iFinal = 0;
+    for (const [i, index, title, url] of titles_urls) {
+        var newRow = '<tr><td>'+index+'</td> <td><a href="'+url+'" target="_blank">'+title+'</a></td></tr>';
+        if (tableBody.children().length > i) {
+          tableBody.children().eq(i).replaceWith(newRow);
+        } else {
+          tableBody.append(newRow);
+        }
+        iFinal = i;
+    }
+    for (let i = tableBody.children().length - 1; i > iFinal; i--) {
+       tableBody.children().eq(i).replaceWith("");
+    }
+};
+
+$(document).ready(function() {
+    var pathname = window.location.pathname;
+    if (pathname === '/') {
+        socket.emit('domus', {});
+    } else if (pathname.startsWith('/perquire')) {
+        socket.emit('perquire', { 'query': $('#Query_Field').val() });
+    }
+});
+
+$(document).ready(function() {
+    socket.on('searches_so_far', function(data) {
+        setPreviousSearchTable(data);
+    });
+});
+
+$(document).ready(function() {
+    socket.on('on_domus_done', function(data) {
+        setPreviousSearchTable(data);
+    });
+});
+
+$(document).ready(function() {
+    socket.on('on_perquire_done', function(data) {
+        setResultTable(data);
+        setPreviousSearchTable(data);
+    });
+});
+
+$(document).ready(function() {
+    $("#Query_Field").on("keyup", event => {
+        if(event.key == "Enter") {
+            $("#perquire").click();
+        }
+    });
+});
+
+$(document).ready(function() {
+  $("#domus").on("click", function() {
+        sendClickAndQuery('domus');
+  });
+});
+
+$(document).ready(function() {
+  $("#quaere").on("click", function() {
+        sendClickAndQuery('quaere');
+  });
+});
+
+$(document).ready(function() {
+  $("#perquire").on("click", function() {
+        sendClickAndQuery('perquire');
+  });
+});
+
+$(document).ready(function() {
+  $("#sentio_felix").on("click", function() {
+        sendClickAndQuery('sentio_felix');
+  });
+});
+
+$(document).ready(function() {
+  $("#domus").on("mousedown", function(event) {
+    if (event.which === 2) {
+        middleClickAndQuery(event, 'domus');
+    }
+  });
+});
+
+$(document).ready(function() {
+  $("#perquire").on("mousedown", function(event) {
+    if (event.which === 2) {
+        middleClickAndQuery(event, 'perquire');
+    }
+  });
+});
+
+$(document).ready(function() {
+  $("#sentio_felix").on("mousedown", function(event) {
+    if (event.which === 2) {
+        middleClickAndQuery(event, 'sentio_felix');
+    }
+  });
+});
+</script>
+{% set origin_variable = origin %}
+
+<!doctype html>
+<h1>
+    <a href="https://en.wiktionary.org/wiki/Wiktionary:Main_Page" target="_blank">
+        VICTIŌNĀRIVM, DICTIŌNĀRIVM LĪBERVM
+    </a>
+</h1>
+
+<div class="row">
+    <table style="table-layout: fixed">
+        <tr>
+            <td style="vertical-align:top">
+                <table style="table-layout: fixed; width: 400px;">
+                    <tbody>
+                        <tr>
+                            <td>
+                                <input type="submit" name="domus" id="domus" value="DOMVS">
+                                <br>
+                                <input type="text" name="Query_Field" id="Query_Field" value="{{query_value}}" autofocus onfocus="var temp_value=this.value; this.value=''; this.value=temp_value" />
+                                <br>
+                                <!-- <input type="submit" name="quaere" id="quaere"value="QVAERE"> -->
+                                <input type="submit" name="perquire" id="perquire" value="PERQVĪRE">
+                                <input type="submit" name="sentio_felix" id="sentio_felix" value="SENTIŌ FĒLĪX" formtarget="_blank">
+                                <br>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+
+            <td style="vertical-align:bottom">
+                <table style="table-layout: fixed; width: 300px;">
+                    <tbody>
+                        <tr>
+                            <td>
+                                INQUĪSĪTIŌNĒS PRIŌRĒS
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <table style="table-layout: fixed">
+        <tr>
+            <td style="vertical-align:top">
+                <table id="Result_Table"  style="table-layout: fixed; width: 400px;">
+                    <tbody id="Result_Table_Body">
+                    {% for i, index, title, url in titles_urls %}
+                        <tr>
+                            <td>{{index}}</td>
+                            <td><a href="{{url}}" target="_blank">{{title}}</a></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </td>
+
+            <td style="vertical-align:top">
+                <table id="Previous_Search_Table"  style="table-layout: fixed; width: 300px;">
+                    <tbody id="Previous_Search_Table_Body">
+                    {% for query_val in searches_so_far %}
+                    {% set url = url_for('perquire') + '?quaestio=' + query_val %}
+                        <tr>
+                            <td><a href="{{url}}" target="_self">{{query_val}}</a></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </td>
+
+            <td style="vertical-align:top"  style="table-layout: fixed; width: 400px;">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <a href="{{image_logo}}" target="_blank">
+                                    <img src="{{image_logo}}" height="240px" align="left">
+                                </a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
