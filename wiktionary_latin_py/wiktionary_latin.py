@@ -42,9 +42,6 @@ class Latin:
         self._cost_matrix = self.cost_matrix()
         self._latin_keys_encoded = self.latin_keys_encoded()
 
-    def get_char_int_dict(self) -> defaultdict[str, int]:
-        return self._char_int_dict
-
     def get_int_char_dict(self) -> dict[int, str]:
         return self._int_char_dict
 
@@ -204,6 +201,12 @@ class Latin:
                     key_key_cost[(b, a)] = case_cost
         return key_key_cost
 
+    def convert_to_search_ints(self, word: str) -> list[int]:
+        """ Remove long vowels and strip whitespace. Convert from unicode to ints. """
+        text = self.convert_to_search_word(word)
+        text_ints = [self._char_int_dict[char] for char in text]
+        return text_ints
+
     @classmethod
     def create_url(cls, word: str) -> str:
         """ Get the wiktionary URL corresponding to "word." """
@@ -244,7 +247,6 @@ class Latin:
 
 
 latin = Latin()
-char_int_dict_global = latin.get_char_int_dict()
 int_char_dict_global = latin.get_int_char_dict()
 
 is_key_cost = True
@@ -274,14 +276,16 @@ def random_image() -> str:
     return random.choice(image_files)
 
 
-def get_query_and_add_to_set() -> str:
+def get_query_or_random_word() -> str:
     text = request.args.get('quaestio').strip()
     if not text: # the user didn't enter anything, try a random word
         text = latin.get_random_word()
-    else:
-        searches_so_far[text] = None
-        socketio.emit('searches_so_far', {'searches': list(searches_so_far.keys())})
     return text
+
+
+def add_query_to_set(text: str) -> str:
+    searches_so_far[text] = None
+    socketio.emit('searches_so_far', {'searches': list(searches_so_far.keys())})
 
 
 @app.route('/')
@@ -293,7 +297,7 @@ def domus():
 
 @app.route('/perquire')
 def perquire():
-    text = get_query_and_add_to_set()
+    text = get_query_or_random_word()
     response = make_response(render_template(
         r'form_latin.html',
         image_logo=os.path.join(app.config["UPLOAD_FOLDER"], random_image()),
@@ -308,13 +312,10 @@ def perquire():
 
 @app.route('/sentio_felix')
 def sentio_felix():
-    text = get_query_and_add_to_set()
-    print(f"sentio_felix_helper 'sentio_felix': {text}")
-    if not text:  # the user didn't enter anything, try a random word
-        text = latin.get_random_word()
-    else:
-        text = latin.convert_to_search_word(text)
-    text_ints = [char_int_dict_global[char] for char in text]
+    text = get_query_or_random_word()
+    print(f"'sentio_felix': {text}")
+    add_query_to_set(text)
+    text_ints = latin.convert_to_search_ints(text)
     latin_word = wdl.weighted_damerau_levenshtein_single_multithread(text_ints)
     latin_word = ''.join([int_char_dict_global[ival] for ival in latin_word])
     url = latin.create_url(latin_word)
@@ -331,11 +332,8 @@ def on_domus(data):
 def on_perquire(data):
     text = data['query']
     print(f"'perquire': {text}")
-    if not text: # the user didn't enter anything, try a random word
-        text = latin.get_random_word()
-    else:
-        text = latin.convert_to_search_word(text)
-    text_ints = [char_int_dict_global[char] for char in text]
+    add_query_to_set(text)
+    text_ints = latin.convert_to_search_ints(text)
     latin_words = wdl.weighted_damerau_levenshtein_multithread(text_ints, latin.MAX_RESULTS)
     for i, key in enumerate(latin_words):
         latin_words[i] = ''.join([int_char_dict_global[ival] for ival in key])
