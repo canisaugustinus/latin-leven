@@ -22,7 +22,7 @@ def get_new_filenames(
         image_list_filename: str,
         previous_image_lists: list[str] = None) -> set[str]:
     curr_dir = pathlib.Path(__file__).parent.resolve()
-    img_path = os.path.join(curr_dir, 'static/IMG')
+    img_path = os.path.join(os.path.dirname(curr_dir), 'wiktionary_latin_py/static/IMG')
 
     previous_files = set([f for f in os.listdir(img_path) if os.path.isfile(os.path.join(img_path, f))])
     if previous_image_lists is not None:
@@ -58,7 +58,7 @@ def generate_wikimedia_image_link(filename: str) -> str:
 if __name__ == '__main__':
     input("We're going to start downloading from Wikipedia. Continue?")
     directory = pathlib.Path(__file__).parent.resolve()
-    headers = {'User-Agent': 'RomeImageBot/0.0 (canisaugustinus@gmail.com)'}
+    headers = {'User-Agent': 'ExampleBotName/0.0 (example@email.com)'}
 
     valid_files = get_new_filenames("rome_images_refined.csv")
     print(len(valid_files))
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         response = requests.get(url, headers=headers, timeout=5)
         progress = i*100.0/len(valid_files)
         if response.status_code == 200:
-            image_path = os.path.join(directory, 'static/IMG', file)
+            image_path = os.path.join(os.path.dirname(directory), 'wiktionary_latin_py/static/IMG')
             open(image_path, 'wb').write(response.content)
             print(f'{progress:.2f}% Downloaded "{file}"')
         else:
