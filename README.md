@@ -3,7 +3,7 @@ You're searching for translations from a specific language to English on Wiktion
 For quick spellchecking, we use a key-position-weighted [Damerau-Levenstein distance](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance). 
 There are a million (Damerau-)Levenstein distance Python packages, but this one has some useful features:
 * It's weighted. The keys `a` and `s` are closer to each other than either is to `p`. Accordingly, it costs less to replace `a` with `s` than it does to replace it with `p`. These weights can be tuned in the Python code.
-* It's fast. This is a (kind of poorly implemented, but still fast enough) multithreaded C++ implementation.
+* It's a fast C++ implementation.
 * Nothing about it is inherently tied to looking up Latin translations on Wiktionary, so I guess you can use it elsewhere.
 
 --- 
