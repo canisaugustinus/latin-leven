@@ -1,3 +1,13 @@
+You're searching for translations from a specific language to English on Wiktionary. You're tired of sifting through entries in other languages. You tried adding a custom search in your browser, e.g. bookmarking `https://en.wiktionary.org/wiki/%s#Latin` with a search keyword in Firefox, but were disappointed when you realized you had no spellcheck. If that's you, then this Latin (but you could tweak it to whatever language you want) Wiktionary entry searcher is for you.
+
+For quick spellchecking, we use a key-position-weighted [Damerau-Levenstein distance](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance). 
+There are a million (Damerau-)Levenstein distance Python packages, but this one has some useful features:
+* It's weighted. The keys `a` and `s` are closer to each other than either is to `p`. Accordingly, it costs less to replace `a` with `s` than it does to replace it with `p`. These weights can be tuned in the Python code.
+* It's fast. This is a (kind of poorly implemented, but still fast enough) multithreaded C++ implementation.
+* Nothing about it is inherently tied to looking up Latin translations on Wiktionary, so I guess you can use it elsewhere.
+
+--- 
+Build Instructions
 1. Install npm.
 2. Clone this repo to some path, which we'll call {latin-leven repo}.
 3. Install socket.io: in {latin-leven repo}\wiktionary_latin_py\static\node_modules, run `npm install socket.io`.
