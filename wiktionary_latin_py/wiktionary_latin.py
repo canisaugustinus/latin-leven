@@ -21,7 +21,7 @@ import numpy as np
 from flask import Flask, request, render_template, make_response, redirect
 from flask_socketio import SocketIO
 import json
-import tqdm
+from tqdm import tqdm
 import weightdamleven
 
 print(weightdamleven.__file__)
