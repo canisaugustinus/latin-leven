@@ -5,3 +5,12 @@
 /.idea
 /.vs
 /x64
+/wiktionary_latin_py/static/IMG
+/wiktionary_latin_py/static/node_modules
+/wiktionary_latin_py/static/package-lock.json
+/wiktionary_latin_py/static/package.json
+/wiktionary_latin_py/database/latin_words.txt
+/wiktionary_latin_py/database/raw-wiktextract-data.jsonl
+/wiktionary_latin_py/database/rome_images.csv
+/weightdamleven_cpp/x64/Release
+/weightdamleven_cpp/x64/Debug

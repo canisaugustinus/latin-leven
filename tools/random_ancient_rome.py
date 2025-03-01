@@ -8,7 +8,6 @@
 # add it and the fist/first_second of the MD5 hash to
 # https://upload.wikimedia.org/wikipedia/commons/{first}/{first}{second}/{filename}
 
-import numpy as np
 import time
 import requests
 import csv
@@ -16,15 +15,19 @@ import urllib.parse
 import pathlib
 import os
 import hashlib
+from tqdm import tqdm
+
+HEADERS = {'User-Agent': 'ExampleBotName/0.0 (example@email.com)'}
+
+DIRECTORY = pathlib.Path(__file__).parent.parent.resolve()
+IMAGE_DIR = os.path.join(DIRECTORY, "wiktionary_latin_py", "static", "IMG")
+ROME_IMAGES_CSV = os.path.join(DIRECTORY, "wiktionary_latin_py", "database", "rome_images.csv")
 
 
 def get_new_filenames(
         image_list_filename: str,
         previous_image_lists: list[str] = None) -> set[str]:
-    curr_dir = pathlib.Path(__file__).parent.resolve()
-    img_path = os.path.join(os.path.dirname(curr_dir), 'wiktionary_latin_py/static/IMG')
-
-    previous_files = set([f for f in os.listdir(img_path) if os.path.isfile(os.path.join(img_path, f))])
+    previous_files = set([f for f in os.listdir(IMAGE_DIR) if os.path.isfile(os.path.join(IMAGE_DIR, f))])
     if previous_image_lists is not None:
         for prev_file in previous_image_lists:
             previous_files = previous_files.union(get_valid_filenames(prev_file))
@@ -34,10 +37,8 @@ def get_new_filenames(
 
 
 def get_valid_filenames(image_list_filename: str) -> set[str]:
-    directory = pathlib.Path(__file__).parent.resolve()
-    image_list_filepath = os.path.join(directory, image_list_filename)
     valid_files = set()
-    with open(image_list_filepath, 'r', encoding="utf-8") as image_list:
+    with open(image_list_filename, 'r', encoding="utf-8") as image_list:
         next(image_list)
         csv_images = csv.reader(image_list, delimiter=',')
         for line in csv_images:
@@ -56,23 +57,17 @@ def generate_wikimedia_image_link(filename: str) -> str:
 
 
 if __name__ == '__main__':
-    input("We're going to start downloading from Wikipedia. Continue?")
-    directory = pathlib.Path(__file__).parent.resolve()
-    headers = {'User-Agent': 'ExampleBotName/0.0 (example@email.com)'}
+    input(f"We're going to start downloading from Wikipedia with header={HEADERS}.\nContinue?")
 
-    valid_files = get_new_filenames("rome_images_refined.csv")
+    if not os.path.exists(IMAGE_DIR):
+        os.makedirs(IMAGE_DIR)
+
+    valid_files = get_new_filenames(ROME_IMAGES_CSV)
     print(len(valid_files))
-    for i, file in enumerate(valid_files, 1):
+    for file in tqdm(valid_files, desc="Downloading images"):
         url = generate_wikimedia_image_link(file)
-        response = requests.get(url, headers=headers, timeout=5)
-        progress = i*100.0/len(valid_files)
+        response = requests.get(url, headers=HEADERS, timeout=5)
         if response.status_code == 200:
-            image_path = os.path.join(os.path.dirname(directory), 'wiktionary_latin_py/static/IMG')
+            image_path = os.path.join(IMAGE_DIR, file)
             open(image_path, 'wb').write(response.content)
-            print(f'{progress:.2f}% Downloaded "{file}"')
-        else:
-            print(f'{progress:.2f}% Skipped "{file}"')
-            print(f'Tried "{url}" with response {response.status_code}.')
-        sleep = np.random.uniform(8.0, 12.0)
-        print(f'Sleeping for {sleep} seconds.')
-        time.sleep(sleep)
+        time.sleep(5)  # be nice and wait, grab a coffee or something

@@ -11,7 +11,6 @@
 # and finally:
 # make sure weightdamleven.pyi is in site-packages next to the .py file
 
-import typing
 import itertools
 import os
 import pathlib
@@ -20,8 +19,6 @@ from collections import defaultdict
 import numpy as np
 from flask import Flask, request, render_template, make_response, redirect
 from flask_socketio import SocketIO
-import json
-from tqdm import tqdm
 import weightdamleven
 
 print(weightdamleven.__file__)
@@ -30,7 +27,6 @@ print(weightdamleven.__file__)
 class Latin:
     MAX_RESULTS = 100
     DIRECTORY = pathlib.Path(__file__).parent.resolve()
-    WIKTEXTRACT_DATA = os.path.join(DIRECTORY, "database", "raw-wiktextract-data.jsonl")
     LATIN_WORDS = os.path.join(DIRECTORY, "database", "latin_words.txt")
 
     def __init__(self):
@@ -116,45 +112,16 @@ class Latin:
             latin_keys_encoded.append([self._char_int_dict[char] for char in key])
         return latin_keys_encoded
 
-    def read_parsed_latin_words(self) -> list[str]:
-        """ Read in the saved list produced by self.parse_latin_word_list(). """
-        with open(self.LATIN_WORDS, 'r', encoding="utf-8") as f:
-            latin_words = list(set(word.strip() for word in f.readlines()))
-        return latin_words
-
-    def parse_latin_word_list(self) -> list[str]:
-        """ From the raw-wiktextract-data.jsonl data, pick out Latin words. """
-        count = self.line_count(self.WIKTEXTRACT_DATA)
-        latin_words = set()
-        with open(self.WIKTEXTRACT_DATA, 'r', encoding="utf-8") as f_in, \
-                open(self.LATIN_WORDS, 'w', encoding="utf-8") as f_out:
-            for count, line in tqdm(enumerate(f_in, start=1), desc="Parsing...", total=count):
-                data = json.loads(line)
-                try:
-                    if data['lang_code'] == 'la':
-                        word = data['word']
-                        latin_words.add(word)
-                        f_out.write(''.join([word, '\n']))
-                except KeyError:
-                    pass
-        return list(latin_words)
-
     def get_random_word(self) -> str:
         """ Get a random Latin word. """
         return random.choice(self._latin_words)
 
     @classmethod
-    def line_count(cls, filename: str):
-        """ Count the number of lines in a file. """
-        def blocks(file: typing.TextIO, size=65536):
-            while True:
-                block = file.read(size)
-                if not block:
-                    break
-                yield block
-        with open(filename, "r", encoding="utf-8", errors='ignore') as f:
-            count = sum(block.count("\n") for block in blocks(f))
-        return count
+    def read_parsed_latin_words(cls) -> list[str]:
+        """ Read in the saved list produced by WiktextractParser.parse_latin_word_list(). """
+        with open(cls.LATIN_WORDS, 'r', encoding="utf-8") as f:
+            latin_words = list(set(word.strip() for word in f.readlines()))
+        return latin_words
 
     @classmethod
     def key_key_cost(cls) -> defaultdict[tuple[str, str], complex]:
