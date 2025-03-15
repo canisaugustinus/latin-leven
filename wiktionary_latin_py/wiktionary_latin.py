@@ -21,7 +21,7 @@ from flask import Flask, request, render_template, make_response, redirect
 from flask_socketio import SocketIO
 import weightdamleven
 
-print(weightdamleven.__file__)
+print(f"weightdamleven library: {weightdamleven.__file__}")
 
 
 class Latin:
@@ -30,14 +30,14 @@ class Latin:
     LATIN_WORDS = os.path.join(DIRECTORY, "database", "latin_words.txt")
 
     def __init__(self):
-        self._latin_words = self.read_parsed_latin_words()
-        self._key_key_cost = self.key_key_cost()
+        self._latin_words: list[str] = self.read_parsed_latin_words()  # list of latin words
+        self._char_char_cost: defaultdict[tuple[str, str], complex] = self.calc_char_char_cost()  # the cost of replacing char1 with char2
 
-        # c++ str -> list[int] conversions because pybind11 wasn't playing nicely with unicode
-        self._char_int_dict = self.char_int_dict()
-        self._int_char_dict = self.int_char_dict()
-        self._cost_matrix = self.cost_matrix()
-        self._latin_keys_encoded = self.latin_keys_encoded()
+        # str -> list[int] conversions because pybind11 wasn't playing nicely with (variable size) unicode
+        self._char_int_dict: defaultdict[str, int] = self.calc_char_int_dict()  # maps from chars to encoding ints
+        self._int_char_dict: dict[int, str] = self.calc_int_char_dict()  # maps from encoding ints to chars
+        self._cost_matrix: list[list[float]] = self.calc_cost_matrix()  # self._cost_matrix[char_int_dict[char1]][char_int_dict[char2]] = the cost to turn char1 into char2
+        self._latin_words_encoded: list[list[int]] = self.calc_latin_words_encoded()  # list of all words encoded as list[int]
 
     def get_int_char_dict(self) -> dict[int, str]:
         return self._int_char_dict
@@ -45,30 +45,30 @@ class Latin:
     def get_cost_matrix(self) -> list[list[float]]:
         return self._cost_matrix
 
-    def get_latin_keys_encoded(self) -> list[list[int]]:
-        return self._latin_keys_encoded
+    def get_latin_words_encoded(self) -> list[list[int]]:
+        return self._latin_words_encoded
 
-    def char_set(self) -> dict[str, None]:
+    def calc_char_set(self) -> dict[str, None]:
         """ char_set is the ordered set (dict[str, None]) of all characters used. """
         char_set = dict()  # use a dict to maintain insertion order
 
         # add all characters in the cost mapping --- critical to have these in char_set first
-        for key in self._key_key_cost:
-            for char in key:
+        for char_char in self._char_char_cost:
+            for char in char_char:
                 char_set[char] = None
 
         # add all characters in all latin words
-        for key in self._latin_words:
-            for char in key:
+        for word in self._latin_words:
+            for char in word:
                 char_set[char] = None
         return char_set
 
-    def char_int_dict(self) -> defaultdict[str, int]:
+    def calc_char_int_dict(self) -> defaultdict[str, int]:
         """
         char_int_dict[char1] maps from char1 to encoding int1.
         Used this for cost matrix indexing:
         """
-        char_set = self.char_set()
+        char_set = self.calc_char_set()
         counter = 0
         char_int_dict = defaultdict(lambda: 0)
         for char in char_set:
@@ -78,39 +78,39 @@ class Latin:
         char_int_dict.default_factory = lambda: char_int_dict[' ']
         return char_int_dict
 
-    def int_char_dict(self) -> dict[int, str]:
+    def calc_int_char_dict(self) -> dict[int, str]:
         """
         int_char_dict[int1] maps from encoding int1 to char1.
         Turn the encoded words back into strings.
         cost_matrix[char_int_dict[char1]][char_int_dict[char2]] = the cost to turn char1 into char2.
         """
         int_char_dict = {}
-        for key, val in self._char_int_dict.items():
-            int_char_dict[val] = key
+        for char, val in self._char_int_dict.items():
+            int_char_dict[val] = char
         return int_char_dict
 
-    def cost_matrix(self) -> list[list[float]]:
+    def calc_cost_matrix(self) -> list[list[float]]:
         """ cost_matrix[char_int_dict[char1]][char_int_dict[char2]] = the cost to turn char1 into char2. """
-        key_set = set()
-        for key in self._key_key_cost:
-            for char in key:
-                key_set.add(char)
-        key_length = len(key_set)
+        char_set = set()
+        for char_char in self._char_char_cost:
+            for char in char_char:
+                char_set.add(char)
+        char_set_length = len(char_set)
 
-        cost_matrix = [[0.0 for _j in range(key_length)] for _i in range(key_length)]
-        for key in self._key_key_cost:
-            char1, char2 = key
+        cost_matrix = [[0.0 for _j in range(char_set_length)] for _i in range(char_set_length)]
+        for char_char in self._char_char_cost:
+            char1, char2 = char_char
             i = self._char_int_dict[char1]
             j = self._char_int_dict[char2]
-            cost_matrix[i][j] = self._key_key_cost[key]
+            cost_matrix[i][j] = self._char_char_cost[char_char]
         return cost_matrix
 
-    def latin_keys_encoded(self) -> list[list[int]]:
-        """ list of all keys encoded as list[int]. """
-        latin_keys_encoded = []
-        for key in self._latin_words:
-            latin_keys_encoded.append([self._char_int_dict[char] for char in key])
-        return latin_keys_encoded
+    def calc_latin_words_encoded(self) -> list[list[int]]:
+        """ list of all words encoded as list[int]. """
+        latin_words_encoded = []
+        for word in self._latin_words:
+            latin_words_encoded.append([self._char_int_dict[char] for char in word])
+        return latin_words_encoded
 
     def get_random_word(self) -> str:
         """ Get a random Latin word. """
@@ -124,25 +124,25 @@ class Latin:
         return latin_words
 
     @classmethod
-    def key_key_cost(cls) -> defaultdict[tuple[str, str], complex]:
-        """ key_key_cost[(char1, char2)] = the cost of replacing char1 with char2. """
-        key_layout = [
+    def calc_char_char_cost(cls) -> defaultdict[tuple[str, str], complex]:
+        """ char_char_cost[(char1, char2)] = the cost of replacing char1 with char2. """
+        char_layout = [
             "qwertyuiop",
             "asdfghjkl",
             "zxcvbnm"]
-        key_dict = defaultdict(lambda: 100.0 + 0j)  # complex values make finding the distance easier
-        key_cols = [np.arange(len(row)) for row in key_layout]
-        key_cols = [row + 0.5*i for i, row in enumerate(key_cols)]
-        key_rows = [0.0, 1.0, 2.0]
-        for row in range(len(key_layout)):
-            for col in range(len(key_layout[row])):
-                val = key_rows[row] + 1j*key_cols[row][col]
-                key_dict[key_layout[row][col]] = val
+        char_dict = defaultdict(lambda: 100.0 + 0j)  # complex values make finding the distance easier
+        char_cols = [np.arange(len(row)) for row in char_layout]
+        char_cols = [row + 0.5*i for i, row in enumerate(char_cols)]
+        char_rows = [0.0, 1.0, 2.0]
+        for row in range(len(char_layout)):
+            for col in range(len(char_layout[row])):
+                val = char_rows[row] + 1j*char_cols[row][col]
+                char_dict[char_layout[row][col]] = val
 
-        pairs = list(itertools.combinations(key_dict, 2))
-        key_key_cost = defaultdict(lambda: 10.0)
+        pairs = list(itertools.combinations(char_dict, 2))
+        char_char_cost = defaultdict(lambda: 10.0)
         for a, b in pairs:
-            cost = np.abs(key_dict[a] - key_dict[b])
+            cost = np.abs(char_dict[a] - char_dict[b])
 
             # all combinations of lower -> lower, lower -> upper, etc.
             a_up_low = [a.lower(), a.upper()]
@@ -153,11 +153,11 @@ class Latin:
                         case_cost = 0.0
                     else:
                         case_cost = 0.1
-                    key_key_cost[(a, b)] = cost + case_cost
-                    key_key_cost[(b, a)] = cost + case_cost
+                    char_char_cost[(a, b)] = cost + case_cost
+                    char_char_cost[(b, a)] = cost + case_cost
 
         # change a given char from upper -> lower or lower -> upper
-        for a in key_dict:
+        for a in char_dict:
             a_up_low = [a.lower(), a.upper()]
             for a in a_up_low:
                 for b in a_up_low:
@@ -165,9 +165,9 @@ class Latin:
                         case_cost = 0.0
                     else:
                         case_cost = 0.1
-                    key_key_cost[(a, b)] = case_cost
-                    key_key_cost[(b, a)] = case_cost
-        return key_key_cost
+                    char_char_cost[(a, b)] = case_cost
+                    char_char_cost[(b, a)] = case_cost
+        return char_char_cost
 
     def convert_to_search_ints(self, word: str) -> list[int]:
         """ Remove long vowels and strip whitespace. Convert from unicode to ints. """
@@ -206,9 +206,9 @@ class Latin:
     def convert_to_search_word(cls, word: str) -> str:
         """ Remove long vowels and strip whitespace. """
         long_vowels_dict = {'ā': 'a', 'ē': 'e', 'ī': 'i', 'ō': 'o', 'ū': 'u'}
-        keys = set(long_vowels_dict.keys())
-        for key in keys:
-            long_vowels_dict[key.upper()] = long_vowels_dict[key].upper()
+        long_vowels = set(long_vowels_dict.keys())
+        for char in long_vowels:
+            long_vowels_dict[char.upper()] = long_vowels_dict[char].upper()
         for long, short in long_vowels_dict.items():
             word = word.replace(long, short)
         return word.strip()
@@ -217,15 +217,15 @@ class Latin:
 latin = Latin()
 int_char_dict_global = latin.get_int_char_dict()
 
-is_key_cost = True
+is_cost_matrix = True
 replace_cost = 10.0
 insert_cost = 3.0
 delete_cost = 3.0
 transpose_cost = 2.0
 wdl = weightdamleven.WeightDamLeven(
-    latin.get_latin_keys_encoded(),
+    latin.get_latin_words_encoded(),
     latin.get_cost_matrix(),
-    is_key_cost,
+    is_cost_matrix,
     replace_cost,
     insert_cost,
     delete_cost,
@@ -303,12 +303,21 @@ def on_perquire(data):
     add_query_to_set(text)
     text_ints = latin.convert_to_search_ints(text)
     latin_words = wdl.weighted_damerau_levenshtein_multithread(text_ints, latin.MAX_RESULTS)
-    for i, key in enumerate(latin_words):
-        latin_words[i] = ''.join([int_char_dict_global[ival] for ival in key])
+    for i, ints in enumerate(latin_words):
+        latin_words[i] = ''.join([int_char_dict_global[ival] for ival in ints])
     titles_urls = []
-    for i, key in enumerate(latin_words):
-        titles_urls.append([i, latin.int_to_roman_numeral(i + 1), key, latin.create_url(key)])
+    for i, word in enumerate(latin_words):
+        titles_urls.append([i, latin.int_to_roman_numeral(i + 1), word, latin.create_url(word)])
     socketio.emit('on_perquire_done', {'table': titles_urls, 'searches': list(searches_so_far.keys())}, to=request.sid)
+
+@socketio.on('query_update')
+def on_query_update(data):
+    text = data['query']
+    text_ints = latin.convert_to_search_ints(text)
+    latin_words = wdl.weighted_damerau_levenshtein_multithread(text_ints, 5)
+    for i, ints in enumerate(latin_words):
+        latin_words[i] = ''.join([int_char_dict_global[ival] for ival in ints])
+    socketio.emit('on_query_update_done', {'latin_words': latin_words}, to=request.sid)
 
 
 if __name__ == "__main__":

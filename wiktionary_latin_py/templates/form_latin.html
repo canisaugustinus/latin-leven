@@ -4,6 +4,10 @@
 var origin = window.location.origin;
 var socket = io.connect(origin);
 
+function sendQueryUpdate() {
+    socket.emit('query_update', { 'query': $('#Query_Field').val() });
+};
+
 function sendClickAndQuery(button_name) {
     if (button_name.startsWith('domus')) {
         window.location = origin;
@@ -64,6 +68,21 @@ function setResultTable(data) {
     }
 };
 
+function setQueriesDataList(data) {
+    latin_words = data.latin_words;
+    var queries = $('#Queries_Select');
+    queries.empty();
+
+    for (const word of latin_words) {
+          var option = $("<option>" + word + "</option>").attr("value", word);
+          queries.append(option);
+    }
+};
+
+$(document).ready(function() {
+    sendQueryUpdate();
+});
+
 $(document).ready(function() {
     var pathname = window.location.pathname;
     if (pathname === '/') {
@@ -93,7 +112,21 @@ $(document).ready(function() {
 });
 
 $(document).ready(function() {
+    socket.on('on_query_update_done', function(data) {
+        setQueriesDataList(data);
+    });
+});
+
+$(document).ready(function() {
     $("#Query_Field").on("keyup", event => {
+        if(event.key == "Enter") {
+            $("#perquire").click();
+        }
+    });
+});
+
+$(document).ready(function() {
+    $("#Queries_Select").on("keyup", event => {
         if(event.key == "Enter") {
             $("#perquire").click();
         }
@@ -167,12 +200,29 @@ $(document).ready(function() {
                             <td>
                                 <input type="submit" name="domus" id="domus" value="DOMVS">
                                 <br>
-                                <input type="text" name="Query_Field" id="Query_Field" value="{{query_value}}" autofocus onfocus="var temp_value=this.value; this.value=''; this.value=temp_value" />
+                                <input
+                                        type="text"
+                                        name="Query_Field"
+                                        id="Query_Field"
+                                        value="{{query_value}}"
+                                        oninput="sendQueryUpdate()"
+                                        autofocus
+                                        onfocus="var temp_value=this.value; this.value=''; this.value=temp_value"
+                                />
                                 <br>
                                 <!-- <input type="submit" name="quaere" id="quaere"value="QVAERE"> -->
                                 <input type="submit" name="perquire" id="perquire" value="PERQVĪRE">
                                 <input type="submit" name="sentio_felix" id="sentio_felix" value="SENTIŌ FĒLĪX" formtarget="_blank">
                                 <br>
+                            </td>
+
+                            <td>
+                                <input name="idValue" id="idValue" type="hidden">
+                                <select
+                                        size="5"
+                                        id="Queries_Select"
+                                        onchange="document.getElementById('Query_Field').value=this.options[this.selectedIndex].text; document.getElementById('idValue').value=this.options[this.selectedIndex].value;">
+                                </select>
                             </td>
                         </tr>
                     </tbody>
