@@ -313,6 +313,10 @@ def on_perquire(data):
 @socketio.on('query_update')
 def on_query_update(data):
     text = data['query']
+    if not text:
+        socketio.emit('on_query_update_done', {'latin_words': []}, to=request.sid)
+        return
+
     text_ints = latin.convert_to_search_ints(text)
     latin_words = wdl.weighted_damerau_levenshtein_multithread(text_ints, 5)
     for i, ints in enumerate(latin_words):
