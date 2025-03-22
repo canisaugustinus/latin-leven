@@ -8,6 +8,36 @@ function sendQueryUpdate() {
     socket.emit('query_update', { 'query': $('#Query_Field').val() });
 };
 
+function addLink() {
+    socket.emit('add_link', { 'url': $('#Link_Field').val() });
+};
+
+function deleteLink(url) {
+    socket.emit('delete_link', { 'url': url });
+};
+
+function setLinkTable(data) {
+    link_urls = data.urls;
+    var tableBody = $('#Link_Table_Body');
+
+    var iFinal = -1;
+    var len = link_urls.length;
+    for (const [i, url] of link_urls) {
+        var newLink = '<td><a href="'+url+'" target="_blank">'+url.substring(0, 28)+'</a></td>';
+        var newButton = '<td><button onclick="deleteLink(&apos;'+url+'&apos;)">DĒLĒ</button></li></td>';
+        var newRow = '<tr>'+newLink+newButton+'</tr>';
+        if (tableBody.children().length > i) {
+          tableBody.children().eq(i).replaceWith(newRow);
+        } else {
+          tableBody.append(newRow);
+        }
+        iFinal = i;
+    }
+    for (let i = tableBody.children().length - 1; i > iFinal; i--) {
+       tableBody.children().eq(i).replaceWith("");
+    }
+};
+
 function sendClickAndQuery(button_name) {
     if (button_name.startsWith('domus')) {
         window.location = origin;
@@ -27,11 +57,10 @@ function middleClickAndQuery(event, button_name) {
 
 function setPreviousSearchTable(data) {
     searches_so_far = data.searches;
-    var table = $('#Previous_Search_Table');
     var tableBody = $('#Previous_Search_Table_Body');
 
     var i = 0;
-    var iFinal = 0;
+    var iFinal = -1;
     for (const search of searches_so_far) {
         var url = origin + '/perquire?quaestio=' + search;
         var newRow = '<tr><td><a href="'+url+'" target="_self">'+search+'</a></td></tr>';
@@ -50,10 +79,9 @@ function setPreviousSearchTable(data) {
 
 function setResultTable(data) {
     titles_urls = data.table;
-    var table = $('#Result_Table');
     var tableBody = $('#Result_Table_Body');
 
-    var iFinal = 0;
+    var iFinal = -1;
     for (const [i, index, title, url] of titles_urls) {
         var newRow = '<tr><td>'+index+'</td> <td><a href="'+url+'" target="_blank">'+title+'</a></td></tr>';
         if (tableBody.children().length > i) {
@@ -84,12 +112,22 @@ $(document).ready(function() {
 });
 
 $(document).ready(function() {
+    socket.emit('get_link', {});
+});
+
+$(document).ready(function() {
     var pathname = window.location.pathname;
     if (pathname === '/') {
         socket.emit('domus', {});
     } else if (pathname.startsWith('/perquire')) {
         socket.emit('perquire', { 'query': $('#Query_Field').val() });
     }
+});
+
+$(document).ready(function() {
+    socket.on('on_add_link_done', function(data) {
+        setLinkTable(data);
+    });
 });
 
 $(document).ready(function() {
@@ -284,6 +322,37 @@ $(document).ready(function() {
                     </tbody>
                 </table>
             </td>
+
+            <td style="vertical-align:top"  style="table-layout: fixed; width: 400px;">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <input
+                                        type="text"
+                                        name="Link_Field"
+                                        id="Link_Field"
+                                />
+                                <button onclick="addLink()">ADDE</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <table id="Link_Table"  style="table-layout: fixed; width: 400px;">
+                                    <tbody id="Link_Table_Body">
+                                        {% for i, url in link_urls %}
+                                            <tr>
+                                                <td><a href="{{url}}" target="_blank">{{url}}</a></td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
         </tr>
     </table>
 </div>
+

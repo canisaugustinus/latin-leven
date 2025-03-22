@@ -28,6 +28,9 @@ class Latin:
     MAX_RESULTS = 100
     DIRECTORY = pathlib.Path(__file__).parent.resolve()
     LATIN_WORDS = os.path.join(DIRECTORY, "database", "latin_words.txt")
+    LINKS = os.path.join(DIRECTORY, "database", "links.txt")
+    if not pathlib.Path(LINKS).is_file():
+        open(LINKS, 'w').close()
 
     def __init__(self):
         self._latin_words: list[str] = self.read_parsed_latin_words()  # list of latin words
@@ -213,9 +216,26 @@ class Latin:
             word = word.replace(long, short)
         return word.strip()
 
+    @classmethod
+    def load_links(cls) -> dict[str, None]:
+        """ Load saved links. """
+        links = {}
+        with open(cls.LINKS, 'r') as f:
+            for link in f:
+                link = link.strip().replace('"', '%22').replace("'", '%27')
+                links[link] = None
+        return links
+
+    @classmethod
+    def save_links(cls, links: dict[str, None]):
+        """ Save links in a database file. """
+        with open(cls.LINKS, 'w') as f:
+            for link in links:
+                f.write(f"{link.strip()}\n")
 
 latin = Latin()
 int_char_dict_global = latin.get_int_char_dict()
+links_dict_global = latin.load_links()
 
 is_cost_matrix = True
 replace_cost = 10.0
@@ -270,7 +290,8 @@ def perquire():
         r'form_latin.html',
         image_logo=os.path.join(app.config["UPLOAD_FOLDER"], random_image()),
         query_value=text,
-        titles_urls=[]))
+        titles_urls=[],
+        link_urls=[]))
     # inefficient - skip caching so that the search field is repopulated correctly when the browser back button is hit
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     response.headers['Pragma'] = 'no-cache'
@@ -310,6 +331,7 @@ def on_perquire(data):
         titles_urls.append([i, latin.int_to_roman_numeral(i + 1), word, latin.create_url(word)])
     socketio.emit('on_perquire_done', {'table': titles_urls, 'searches': list(searches_so_far.keys())}, to=request.sid)
 
+
 @socketio.on('query_update')
 def on_query_update(data):
     text = data['query']
@@ -322,6 +344,36 @@ def on_query_update(data):
     for i, ints in enumerate(latin_words):
         latin_words[i] = ''.join([int_char_dict_global[ival] for ival in ints])
     socketio.emit('on_query_update_done', {'latin_words': latin_words}, to=request.sid)
+
+
+def on_add_delete_link_done():
+    link_urls = [[i, link] for i, link in enumerate(links_dict_global.keys())]
+    socketio.emit('on_add_link_done', {'urls': link_urls}, to=request.sid)
+
+
+@socketio.on('get_link')
+def on_get_link(_data):
+    global links_dict_global
+    links_dict_global = latin.load_links()
+    on_add_delete_link_done()
+
+
+@socketio.on('add_link')
+def on_add_link(data):
+    url = data['url'].strip().replace('"', '%22').replace("'", '%27')
+    if url and url not in links_dict_global:
+        links_dict_global[url] = None
+        latin.save_links(links_dict_global)
+        on_add_delete_link_done()
+
+
+@socketio.on('delete_link')
+def on_delete_link(data):
+    url = data['url']
+    if url in links_dict_global:
+        del links_dict_global[url]
+        latin.save_links(links_dict_global)
+        on_add_delete_link_done()
 
 
 if __name__ == "__main__":
