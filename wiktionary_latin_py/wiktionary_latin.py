@@ -340,7 +340,7 @@ def on_query_update(data):
         return
 
     text_ints = latin.convert_to_search_ints(text)
-    latin_words = wdl.weighted_damerau_levenshtein_multithread(text_ints, 5)
+    latin_words = wdl.weighted_damerau_levenshtein_multithread(text_ints, 10)
     for i, ints in enumerate(latin_words):
         latin_words[i] = ''.join([int_char_dict_global[ival] for ival in ints])
     socketio.emit('on_query_update_done', {'latin_words': latin_words}, to=request.sid)

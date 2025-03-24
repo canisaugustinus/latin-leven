@@ -23,8 +23,8 @@ function setLinkTable(data) {
     var iFinal = -1;
     var len = link_urls.length;
     for (const [i, url] of link_urls) {
-        var newLink = '<td><a href="'+url+'" target="_blank">'+url.substring(0, 28)+'</a></td>';
-        var newButton = '<td><button onclick="deleteLink(&apos;'+url+'&apos;)">DĒLĒ</button></li></td>';
+        var newLink = '<td style="width: 200px;"><a href="'+url+'" target="_blank">'+url.substring(0, 28)+'</a></td>';
+        var newButton = '<td style="width: 50px;"><button onclick="deleteLink(&apos;'+url+'&apos;)">DĒLĒ</button></li></td>';
         var newRow = '<tr>'+newLink+newButton+'</tr>';
         if (tableBody.children().length > i) {
           tableBody.children().eq(i).replaceWith(newRow);
@@ -219,7 +219,6 @@ $(document).ready(function() {
   });
 });
 </script>
-{% set origin_variable = origin %}
 
 <!doctype html>
 <h1>
@@ -229,9 +228,9 @@ $(document).ready(function() {
 </h1>
 
 <div class="row">
-    <table style="table-layout: fixed">
+    <table style="table-layout: fixed;">
         <tr>
-            <td style="vertical-align:top">
+            <td style="vertical-align:top;">
                 <table style="table-layout: fixed; width: 400px;">
                     <tbody>
                         <tr>
@@ -239,13 +238,13 @@ $(document).ready(function() {
                                 <input type="submit" name="domus" id="domus" value="DOMVS">
                                 <br>
                                 <input
-                                        type="text"
-                                        name="Query_Field"
-                                        id="Query_Field"
-                                        value="{{query_value}}"
-                                        oninput="sendQueryUpdate()"
-                                        autofocus
-                                        onfocus="var temp_value=this.value; this.value=''; this.value=temp_value"
+                                    type="text"
+                                    name="Query_Field"
+                                    id="Query_Field"
+                                    value="{{query_value}}"
+                                    oninput="sendQueryUpdate()"
+                                    autofocus
+                                    onfocus="var temp_value=this.value; this.value=''; this.value=temp_value"
                                 />
                                 <br>
                                 <!-- <input type="submit" name="quaere" id="quaere"value="QVAERE"> -->
@@ -257,9 +256,13 @@ $(document).ready(function() {
                             <td>
                                 <input name="idValue" id="idValue" type="hidden">
                                 <select
-                                        size="5"
-                                        id="Queries_Select"
-                                        onchange="document.getElementById('Query_Field').value=this.options[this.selectedIndex].text; document.getElementById('idValue').value=this.options[this.selectedIndex].value;">
+                                    style="width:180px; height:80px;"
+                                    size="10"
+                                    id="Queries_Select"
+                                    onchange=
+                                        "document.getElementById('Query_Field').value=this.options[this.selectedIndex].text;
+                                        document.getElementById('idValue').value=this.options[this.selectedIndex].value;
+                                        document.getElementById('perquire').click();">
                                 </select>
                             </td>
                         </tr>
@@ -267,8 +270,8 @@ $(document).ready(function() {
                 </table>
             </td>
 
-            <td style="vertical-align:bottom">
-                <table style="table-layout: fixed; width: 300px;">
+            <td style="vertical-align:bottom;">
+                <table style="table-layout: fixed; width: 200px;">
                     <tbody>
                         <tr>
                             <td>
@@ -281,64 +284,52 @@ $(document).ready(function() {
         </tr>
     </table>
 
-    <table style="table-layout: fixed">
+    <table style="table-layout: fixed;">
         <tr>
-            <td style="vertical-align:top">
+            <td style="vertical-align:top;">
                 <table id="Result_Table"  style="table-layout: fixed; width: 400px;">
                     <tbody id="Result_Table_Body">
-                    {% for i, index, title, url in titles_urls %}
-                        <tr>
-                            <td>{{index}}</td>
-                            <td><a href="{{url}}" target="_blank">{{title}}</a></td>
-                        </tr>
-                    {% endfor %}
+                        {% for i, index, title, url in titles_urls %}
+                            <tr>
+                                <td>{{index}}</td>
+                                <td><a href="{{url}}" target="_blank">{{title}}</a></td>
+                            </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </td>
 
-            <td style="vertical-align:top">
-                <table id="Previous_Search_Table"  style="table-layout: fixed; width: 300px;">
+            <td style="vertical-align:top;">
+                <table id="Previous_Search_Table"  style="table-layout: fixed; width: 200px;">
                     <tbody id="Previous_Search_Table_Body">
-                    {% for query_val in searches_so_far %}
-                    {% set url = url_for('perquire') + '?quaestio=' + query_val %}
-                        <tr>
-                            <td><a href="{{url}}" target="_self">{{query_val}}</a></td>
-                        </tr>
-                    {% endfor %}
+                        {% for query_val in searches_so_far %}
+                            {% set url = url_for('perquire') + '?quaestio=' + query_val %}
+                            <tr>
+                                <td><a href="{{url}}" target="_self">{{query_val}}</a></td>
+                            </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </td>
 
-            <td style="vertical-align:top"  style="table-layout: fixed; width: 400px;">
-                <table>
+            <td style="vertical-align:top;">
+                <table style="table-layout: fixed; width: 250px;">
                     <tbody>
                         <tr>
-                            <td>
-                                <a href="{{image_logo}}" target="_blank">
-                                    <img src="{{image_logo}}" height="240px" align="left">
-                                </a>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </td>
-
-            <td style="vertical-align:top"  style="table-layout: fixed; width: 400px;">
-                <table>
-                    <tbody>
-                        <tr>
-                            <td>
+                            <td  style="width: 200px;">
                                 <input
-                                        type="text"
-                                        name="Link_Field"
-                                        id="Link_Field"
+                                    type="text"
+                                    name="Link_Field"
+                                    id="Link_Field"
                                 />
+                            </td>
+                            <td  style="width: 50px;">
                                 <button onclick="addLink()">ADDE</button>
                             </td>
                         </tr>
                         <tr>
                             <td>
-                                <table id="Link_Table"  style="table-layout: fixed; width: 400px;">
+                                <table id="Link_Table"  style="table-layout: fixed; width: 200px;">
                                     <tbody id="Link_Table_Body">
                                         {% for i, url in link_urls %}
                                             <tr>
@@ -347,6 +338,20 @@ $(document).ready(function() {
                                         {% endfor %}
                                     </tbody>
                                 </table>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+
+            <td style="vertical-align:top; table-layout: fixed; width: 400px;">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <a href="{{image_logo}}" target="_blank">
+                                    <img src="{{image_logo}}" height="240px" align="left">
+                                </a>
                             </td>
                         </tr>
                     </tbody>
