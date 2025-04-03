@@ -236,6 +236,8 @@ class Latin:
 latin = Latin()
 int_char_dict_global = latin.get_int_char_dict()
 links_dict_global = latin.load_links()
+images_total_global = {}
+images_remaining_global = {}
 
 is_cost_matrix = True
 replace_cost = 10.0
@@ -259,9 +261,23 @@ socketio = SocketIO(app)
 
 
 def random_image() -> str:
+    global images_total_global
+    global images_remaining_global
+
     full_dir = os.path.join(latin.DIRECTORY, app.config["UPLOAD_FOLDER"])
-    image_files = [f for f in os.listdir(full_dir) if os.path.isfile(os.path.join(full_dir, f))]
-    return random.choice(image_files)
+    for image in os.listdir(full_dir):
+        if image not in images_total_global and os.path.isfile(os.path.join(full_dir, image)):
+            # a new image has been added to the folder
+            images_total_global[image] = None
+            images_remaining_global[image] = None
+
+    if not images_remaining_global:
+        # we've exhausted the images, start over
+        images_remaining_global = images_total_global.copy()
+
+    image = random.choice(list(images_remaining_global.keys()))
+    del images_remaining_global[image]
+    return image
 
 
 def get_query_or_random_word() -> str:
@@ -301,6 +317,8 @@ def perquire():
 
 @app.route('/sentio_felix')
 def sentio_felix():
+    global int_char_dict_global
+
     text = get_query_or_random_word()
     print(f"'sentio_felix': {text}")
     add_query_to_set(text)
@@ -319,6 +337,8 @@ def on_domus(data):
 
 @socketio.on('perquire')
 def on_perquire(data):
+    global int_char_dict_global
+
     text = data['query']
     print(f"'perquire': {text}")
     add_query_to_set(text)
@@ -334,6 +354,8 @@ def on_perquire(data):
 
 @socketio.on('query_update')
 def on_query_update(data):
+    global int_char_dict_global
+
     text = data['query']
     if not text:
         socketio.emit('on_query_update_done', {'latin_words': []}, to=request.sid)
@@ -347,6 +369,8 @@ def on_query_update(data):
 
 
 def on_add_delete_link_done():
+    global links_dict_global
+
     link_urls = [[i, link] for i, link in enumerate(links_dict_global.keys())]
     socketio.emit('on_add_link_done', {'urls': link_urls}, to=request.sid)
 
@@ -354,12 +378,15 @@ def on_add_delete_link_done():
 @socketio.on('get_link')
 def on_get_link(_data):
     global links_dict_global
+
     links_dict_global = latin.load_links()
     on_add_delete_link_done()
 
 
 @socketio.on('add_link')
 def on_add_link(data):
+    global links_dict_global
+
     url = data['url'].strip().replace('"', '%22').replace("'", '%27')
     if url and url not in links_dict_global:
         links_dict_global[url] = None
@@ -369,6 +396,8 @@ def on_add_link(data):
 
 @socketio.on('delete_link')
 def on_delete_link(data):
+    global links_dict_global
+
     url = data['url']
     if url in links_dict_global:
         del links_dict_global[url]
