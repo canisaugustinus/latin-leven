@@ -17,6 +17,7 @@ import pathlib
 import random
 from collections import defaultdict
 import numpy as np
+from send2trash import send2trash
 from flask import Flask, request, render_template, make_response, redirect
 from flask_socketio import SocketIO
 import weightdamleven
@@ -264,17 +265,35 @@ def random_image() -> str:
     global images_total_global
     global images_remaining_global
 
+    # check for any changes to the image folder content
     full_dir = os.path.join(latin.DIRECTORY, app.config["UPLOAD_FOLDER"])
+    images_total_local = {}
     for image in os.listdir(full_dir):
-        if image not in images_total_global and os.path.isfile(os.path.join(full_dir, image)):
+        if os.path.isfile(os.path.join(full_dir, image)):
+            images_total_local[image] = None
+
+    # add new images to the ordered set
+    for image in images_total_local:
+        if image not in images_total_global:
             # a new image has been added to the folder
             images_total_global[image] = None
             images_remaining_global[image] = None
 
+    # remove deleted images from the ordered set
+    del_image_list = []
+    for image in images_total_global:
+        if image not in images_total_local:
+            # an image has been deleted from the folder
+            del_image_list.append(image)
+    for image in del_image_list:
+        del images_total_global[image]
+        images_remaining_global.pop(image, None)
+
+    # if we've exhausted the images, start over
     if not images_remaining_global:
-        # we've exhausted the images, start over
         images_remaining_global = images_total_global.copy()
 
+    # randomly choose an image without replacement
     image = random.choice(list(images_remaining_global.keys()))
     del images_remaining_global[image]
     return image
@@ -403,6 +422,16 @@ def on_delete_link(data):
         del links_dict_global[url]
         latin.save_links(links_dict_global)
         on_add_delete_link_done()
+
+
+@socketio.on('delete_image')
+def on_delete_image(data):
+    image = data['image']
+    print(f"'delete_image': {image}")
+    full_dir = os.path.join(latin.DIRECTORY, app.config["UPLOAD_FOLDER"])
+    full_path = os.path.join(full_dir, os.path.basename(image))
+    send2trash(full_path)
+    socketio.emit('on_delete_image_done', {}, to=request.sid)
 
 
 if __name__ == "__main__":

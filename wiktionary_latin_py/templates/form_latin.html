@@ -12,6 +12,10 @@ function addLink() {
     socket.emit('add_link', { 'url': $('#Link_Field').val() });
 };
 
+function deleteImage() {
+    socket.emit('delete_image', { 'image': $('#Image_Logo_Field').val() });
+};
+
 function deleteLink(url) {
     socket.emit('delete_link', { 'url': url });
 };
@@ -127,6 +131,12 @@ $(document).ready(function() {
 $(document).ready(function() {
     socket.on('on_add_link_done', function(data) {
         setLinkTable(data);
+    });
+});
+
+$(document).ready(function() {
+    socket.on('on_delete_image_done', function(data) {
+        window.location.reload();
     });
 });
 
@@ -281,6 +291,29 @@ $(document).ready(function() {
                     </tbody>
                 </table>
             </td>
+
+            <td style="vertical-align:top;">
+                <table style="table-layout: fixed; width: 250px;">
+                    <tbody>
+                        <tr>
+                            <td  style="width: 200px;"> </td>
+                            <td  style="width: 50px;"> </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+
+            <td style="vertical-align:bottom; table-layout: fixed; width: 400px;">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <button onclick="deleteImage()">DĒLĒ IMĀGINEM</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
         </tr>
     </table>
 
@@ -349,6 +382,7 @@ $(document).ready(function() {
                     <tbody>
                         <tr>
                             <td>
+                                <input name="Image_Logo_Field" id="Image_Logo_Field" type="hidden" value="{{image_logo}}">
                                 <a href="{{image_logo}}" target="_blank">
                                     <img src="{{image_logo}}" height="240px" align="left">
                                 </a>
