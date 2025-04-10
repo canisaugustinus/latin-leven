@@ -15,6 +15,8 @@ import itertools
 import os
 import pathlib
 import random
+import threading
+import time
 from collections import defaultdict
 import numpy as np
 from send2trash import send2trash
@@ -234,27 +236,54 @@ class Latin:
             for link in links:
                 f.write(f"{link.strip()}\n")
 
-latin = Latin()
-int_char_dict_global = latin.get_int_char_dict()
-links_dict_global = latin.load_links()
+
+def query_update_thread_func():
+    """ An infinite loop that checks the latest 'query_update' """
+    global latin_global
+    global query_update_global
+    global query_update_lock_global
+    global wdl_global
+
+    while True:
+        with query_update_lock_global:
+            for request_sid in list(query_update_global.keys()):
+                text = query_update_global.pop(request_sid)
+                if not text:
+                    socketio.emit('on_query_update_done', {'latin_words': []}, to=request_sid)
+                    continue
+
+                text_ints = latin_global.convert_to_search_ints(text)
+                latin_words = wdl_global.weighted_damerau_levenshtein_multithread(text_ints, 10)
+                for i, ints in enumerate(latin_words):
+                    latin_words[i] = ''.join([int_char_dict_global[ival] for ival in ints])
+                socketio.emit('on_query_update_done', {'latin_words': latin_words}, to=request_sid)
+        time.sleep(0.001)
+
+
+latin_global = Latin()
+int_char_dict_global = latin_global.get_int_char_dict()
+links_dict_global = latin_global.load_links()
 images_total_global = {}
 images_remaining_global = {}
+searches_so_far_global = {}
+query_update_lock_global = threading.Lock()
+query_update_global = {}
+query_update_thread = threading.Thread(target=query_update_thread_func)
+query_update_thread.start()
 
 is_cost_matrix = True
 replace_cost = 10.0
 insert_cost = 3.0
 delete_cost = 3.0
 transpose_cost = 2.0
-wdl = weightdamleven.WeightDamLeven(
-    latin.get_latin_words_encoded(),
-    latin.get_cost_matrix(),
+wdl_global = weightdamleven.WeightDamLeven(
+    latin_global.get_latin_words_encoded(),
+    latin_global.get_cost_matrix(),
     is_cost_matrix,
     replace_cost,
     insert_cost,
     delete_cost,
     transpose_cost)
-
-searches_so_far = {}  # using a dictionary with None values as an ordered set
 
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = os.path.join("static", "IMG")
@@ -262,11 +291,12 @@ socketio = SocketIO(app)
 
 
 def random_image() -> str:
+    global latin_global
     global images_total_global
     global images_remaining_global
 
     # check for any changes to the image folder content
-    full_dir = os.path.join(latin.DIRECTORY, app.config["UPLOAD_FOLDER"])
+    full_dir = os.path.join(latin_global.DIRECTORY, app.config["UPLOAD_FOLDER"])
     images_total_local = {}
     for image in os.listdir(full_dir):
         if os.path.isfile(os.path.join(full_dir, image)):
@@ -300,15 +330,17 @@ def random_image() -> str:
 
 
 def get_query_or_random_word() -> str:
+    global latin_global
     text = request.args.get('quaestio').strip()
     if not text: # the user didn't enter anything, try a random word
-        text = latin.get_random_word()
+        text = latin_global.get_random_word()
     return text
 
 
 def add_query_to_set(text: str) -> str:
-    searches_so_far[text] = None
-    socketio.emit('searches_so_far', {'searches': list(searches_so_far.keys())})
+    global searches_so_far_global
+    searches_so_far_global[text] = None
+    socketio.emit('searches_so_far', {'searches': list(searches_so_far_global.keys())})
 
 
 @app.route('/')
@@ -336,55 +368,53 @@ def perquire():
 
 @app.route('/sentio_felix')
 def sentio_felix():
+    global latin_global
     global int_char_dict_global
+    global wdl_global
 
     text = get_query_or_random_word()
     print(f"'sentio_felix': {text}")
     add_query_to_set(text)
-    text_ints = latin.convert_to_search_ints(text)
-    latin_word = wdl.weighted_damerau_levenshtein_single_multithread(text_ints)
+    text_ints = latin_global.convert_to_search_ints(text)
+    latin_word = wdl_global.weighted_damerau_levenshtein_single_multithread(text_ints)
     latin_word = ''.join([int_char_dict_global[ival] for ival in latin_word])
-    url = latin.create_url(latin_word)
+    url = latin_global.create_url(latin_word)
     return redirect(url)
 
 
 @socketio.on('domus')
 def on_domus(data):
+    global searches_so_far_global
     print(f"'domus'")
-    socketio.emit('on_domus_done', {'searches': list(searches_so_far.keys())}, to=request.sid)
+    socketio.emit('on_domus_done', {'searches': list(searches_so_far_global.keys())}, to=request.sid)
 
 
 @socketio.on('perquire')
 def on_perquire(data):
+    global latin_global
     global int_char_dict_global
+    global searches_so_far_global
+    global wdl_global
 
     text = data['query']
     print(f"'perquire': {text}")
     add_query_to_set(text)
-    text_ints = latin.convert_to_search_ints(text)
-    latin_words = wdl.weighted_damerau_levenshtein_multithread(text_ints, latin.MAX_RESULTS)
+    text_ints = latin_global.convert_to_search_ints(text)
+    latin_words = wdl_global.weighted_damerau_levenshtein_multithread(text_ints, latin_global.MAX_RESULTS)
     for i, ints in enumerate(latin_words):
         latin_words[i] = ''.join([int_char_dict_global[ival] for ival in ints])
     titles_urls = []
     for i, word in enumerate(latin_words):
-        titles_urls.append([i, latin.int_to_roman_numeral(i + 1), word, latin.create_url(word)])
-    socketio.emit('on_perquire_done', {'table': titles_urls, 'searches': list(searches_so_far.keys())}, to=request.sid)
+        titles_urls.append([i, latin_global.int_to_roman_numeral(i + 1), word, latin_global.create_url(word)])
+    socketio.emit('on_perquire_done', {'table': titles_urls, 'searches': list(searches_so_far_global.keys())}, to=request.sid)
 
 
 @socketio.on('query_update')
 def on_query_update(data):
-    global int_char_dict_global
-
-    text = data['query']
-    if not text:
-        socketio.emit('on_query_update_done', {'latin_words': []}, to=request.sid)
-        return
-
-    text_ints = latin.convert_to_search_ints(text)
-    latin_words = wdl.weighted_damerau_levenshtein_multithread(text_ints, 10)
-    for i, ints in enumerate(latin_words):
-        latin_words[i] = ''.join([int_char_dict_global[ival] for ival in ints])
-    socketio.emit('on_query_update_done', {'latin_words': latin_words}, to=request.sid)
+    global query_update_lock_global
+    global query_update_global
+    with query_update_lock_global:
+        query_update_global[request.sid] = data['query']
 
 
 def on_add_delete_link_done():
@@ -396,39 +426,44 @@ def on_add_delete_link_done():
 
 @socketio.on('get_link')
 def on_get_link(_data):
+    global latin_global
     global links_dict_global
 
-    links_dict_global = latin.load_links()
+    links_dict_global = latin_global.load_links()
     on_add_delete_link_done()
 
 
 @socketio.on('add_link')
 def on_add_link(data):
+    global latin_global
     global links_dict_global
 
     url = data['url'].strip().replace('"', '%22').replace("'", '%27')
     if url and url not in links_dict_global:
         links_dict_global[url] = None
-        latin.save_links(links_dict_global)
+        latin_global.save_links(links_dict_global)
         on_add_delete_link_done()
 
 
 @socketio.on('delete_link')
 def on_delete_link(data):
+    global latin_global
     global links_dict_global
 
     url = data['url']
     if url in links_dict_global:
         del links_dict_global[url]
-        latin.save_links(links_dict_global)
+        latin_global.save_links(links_dict_global)
         on_add_delete_link_done()
 
 
 @socketio.on('delete_image')
 def on_delete_image(data):
+    global latin_global
+
     image = data['image']
     print(f"'delete_image': {image}")
-    full_dir = os.path.join(latin.DIRECTORY, app.config["UPLOAD_FOLDER"])
+    full_dir = os.path.join(latin_global.DIRECTORY, app.config["UPLOAD_FOLDER"])
     full_path = os.path.join(full_dir, os.path.basename(image))
     send2trash(full_path)
     socketio.emit('on_delete_image_done', {}, to=request.sid)
