@@ -102,12 +102,12 @@ function setResultTable(data) {
 };
 
 function setQueriesDataList(data) {
-    latin_words = data.latin_words;
+    suggestions = data.suggestions;
     var queries = $('#Queries_Select');
     queries.empty();
 
-    for (const word of latin_words) {
-          var option = $("<option>" + word + "</option>").attr("value", word);
+    for (const [word, url] of suggestions) {
+          var option = $("<option>" + word + "</option>").attr("value", url);
           queries.append(option);
     }
 };
@@ -288,15 +288,14 @@ $(document).ready(function() {
                             </td>
 
                             <td>
-                                <input name="idValue" id="idValue" type="hidden">
                                 <select
                                     style="width:180px; height:80px;"
                                     size="10"
                                     id="Queries_Select"
                                     onchange=
                                         "document.getElementById('Query_Field').value=this.options[this.selectedIndex].text;
-                                        document.getElementById('idValue').value=this.options[this.selectedIndex].value;
-                                        document.getElementById('perquire').click();">
+                                        document.getElementById('perquire').click();
+                                        window.open(this.options[this.selectedIndex].value, '_blank').focus();">
                                 </select>
                             </td>
                         </tr>

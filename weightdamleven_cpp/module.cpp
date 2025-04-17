@@ -18,6 +18,7 @@ private:
     bool m_is_key_cost;
     double m_replace_cost;
     double m_insert_cost;
+    double m_append_cost;
     double m_delete_cost;
     double m_transpose_cost;
 
@@ -28,6 +29,7 @@ public:
         bool is_key_cost,
         double replace_cost, /* if is_key_cost, then this value is used when a key is out of cost_matrix */
         double insert_cost,
+        double append_cost,
         double delete_cost,
         double transpose_cost)
     {
@@ -36,6 +38,7 @@ public:
         m_is_key_cost = is_key_cost;
         m_replace_cost = replace_cost;
         m_insert_cost = insert_cost;
+        m_append_cost = append_cost;
         m_delete_cost = delete_cost;
         m_transpose_cost = transpose_cost;
     }
@@ -58,7 +61,8 @@ public:
         }
         for (int j = 1; j < len2 + 1; ++j)
         {
-            matrix[0][j] = j * m_insert_cost;
+            double insert_append_cost = j > len1 ? m_append_cost : m_insert_cost;
+            matrix[0][j] = matrix[0][j-1] + insert_append_cost;
         }
         for (int i = 1; i < len1 + 1; ++i)
         {
@@ -85,9 +89,10 @@ public:
                     replace_cost_curr = m_replace_cost;
                 }
 
+                double insert_append_cost = j > len1 ? m_append_cost : m_insert_cost;
                 matrix[i][j] = min(
                     matrix[i - 1][j] + m_delete_cost, // delete
-                    matrix[i][j - 1] + m_insert_cost); // insert
+                    matrix[i][j - 1] + insert_append_cost); // insert
                 matrix[i][j] = min(
                     matrix[i][j],
                     matrix[i - 1][j - 1] + replace_cost_curr); // replace
@@ -258,6 +263,7 @@ PYBIND11_MODULE(weightdamleven, m)
                 double,
                 double,
                 double,
+                double,
                 double>(),
             "Constructor.",
             py::arg("keys_encoded"),
@@ -265,6 +271,7 @@ PYBIND11_MODULE(weightdamleven, m)
             py::arg("is_key_cost"),
             py::arg("replace_cost"),
             py::arg("insert_cost"),
+            py::arg("append_cost"),
             py::arg("delete_cost"),
             py::arg("transpose_cost"))
         .def("weighted_damerau_levenshtein",

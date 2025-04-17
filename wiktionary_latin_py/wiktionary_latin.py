@@ -3,11 +3,12 @@
 # pybind11 stuff:
 # https://learn.microsoft.com/en-us/visualstudio/python/working-with-c-cpp-python-in-visual-studio?view=vs-2022
 
-# pip install {path}\weightdamleven_pybind11\weightdamleven\
+# install this package:
+# C:\Users\{USERNAME}\PycharmProjects\pythonProject\venv\Scripts\pip install {path}\weightdamleven_pybind11\weightdamleven\
 # delete the auto-generated file:
 # C:\Users\{USERNAME}\AppData\Local\JetBrains\PyCharmCE2021.3\python_stubs\{number}\weightdamleven.py
 # then with THE "pybind11-stubgen" module:
-# pybind11-stubgen -o {path_to_site-packages} weightdamleven
+# C:\Users\{USERNAME}\PycharmProjects\pythonProject\venv\Scripts\pybind11-stubgen -o {path_to_site-packages} weightdamleven
 # and finally:
 # make sure weightdamleven.pyi is in site-packages next to the .py file
 
@@ -243,6 +244,7 @@ def query_update_thread_func():
     global query_update_global
     global query_update_lock_global
     global wdl_global
+    global wdl_suggestions_global
 
     while True:
         with query_update_lock_global:
@@ -253,10 +255,13 @@ def query_update_thread_func():
                     continue
 
                 text_ints = latin_global.convert_to_search_ints(text)
-                latin_words = wdl_global.weighted_damerau_levenshtein_multithread(text_ints, 10)
+                latin_words = wdl_suggestions_global.weighted_damerau_levenshtein_multithread(text_ints, 10)
                 for i, ints in enumerate(latin_words):
                     latin_words[i] = ''.join([int_char_dict_global[ival] for ival in ints])
-                socketio.emit('on_query_update_done', {'latin_words': latin_words}, to=request_sid)
+                suggestions = []
+                for i, word in enumerate(latin_words):
+                    suggestions.append([word, latin_global.create_url(word)])
+                socketio.emit('on_query_update_done', {'suggestions': suggestions}, to=request_sid)
         time.sleep(0.001)
 
 
@@ -274,6 +279,7 @@ query_update_thread.start()
 is_cost_matrix = True
 replace_cost = 10.0
 insert_cost = 3.0
+append_cost = 0.1
 delete_cost = 3.0
 transpose_cost = 2.0
 wdl_global = weightdamleven.WeightDamLeven(
@@ -282,6 +288,16 @@ wdl_global = weightdamleven.WeightDamLeven(
     is_cost_matrix,
     replace_cost,
     insert_cost,
+    insert_cost,
+    delete_cost,
+    transpose_cost)
+wdl_suggestions_global = weightdamleven.WeightDamLeven(
+    latin_global.get_latin_words_encoded(),
+    latin_global.get_cost_matrix(),
+    is_cost_matrix,
+    replace_cost,
+    insert_cost,
+    append_cost,
     delete_cost,
     transpose_cost)
 

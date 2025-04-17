@@ -15,3 +15,6 @@
 /wiktionary_latin_py/database/rome_images.csv
 /weightdamleven_cpp/x64/Release
 /weightdamleven_cpp/x64/Debug
+/weightdamleven_cpp/build/lib.win-amd64-cpython-310/weightdamleven.cp310-win_amd64.pyd
+/weightdamleven_cpp/build/temp.win-amd64-cpython-310/Release
+/weightdamleven_cpp/weightdamleven.egg-info
