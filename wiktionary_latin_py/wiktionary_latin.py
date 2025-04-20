@@ -221,21 +221,30 @@ class Latin:
         return word.strip()
 
     @classmethod
-    def load_links(cls) -> dict[str, None]:
+    def load_links(cls) -> dict[str, str]:
         """ Load saved links. """
         links = {}
         with open(cls.LINKS, 'r') as f:
-            for link in f:
-                link = link.strip().replace('"', '%22').replace("'", '%27')
-                links[link] = None
+            for line in f:
+                vals = line.split(',')
+                link = vals[0].strip().replace('"', '%22').replace("'", '%27')
+                if not link:
+                    continue
+                if len(vals) == 1:
+                    links[link] = link
+                else:
+                    title = vals[1].strip()
+                    if not title:
+                        title = link
+                    links[title] = link
         return links
 
     @classmethod
-    def save_links(cls, links: dict[str, None]):
+    def save_links(cls, links: dict[str, str]):
         """ Save links in a database file. """
         with open(cls.LINKS, 'w') as f:
-            for link in links:
-                f.write(f"{link.strip()}\n")
+            for title, url in links.items():
+                f.write(f"{url.strip()}, {title.strip()}\n")
 
 
 def query_update_thread_func():
@@ -436,7 +445,7 @@ def on_query_update(data):
 def on_add_delete_link_done():
     global links_dict_global
 
-    link_urls = [[i, link] for i, link in enumerate(links_dict_global.keys())]
+    link_urls = [[i, title, url] for i, (title, url) in enumerate(links_dict_global.items())]
     socketio.emit('on_add_link_done', {'urls': link_urls}, to=request.sid)
 
 
@@ -454,9 +463,14 @@ def on_add_link(data):
     global latin_global
     global links_dict_global
 
+    title = data['title'].strip()
     url = data['url'].strip().replace('"', '%22').replace("'", '%27')
-    if url and url not in links_dict_global:
-        links_dict_global[url] = None
+    if not title:
+        title = url
+    if not url.startswith("https://"):
+        url = "https://" + url
+    if url:
+        links_dict_global[title] = url
         latin_global.save_links(links_dict_global)
         on_add_delete_link_done()
 
@@ -466,9 +480,10 @@ def on_delete_link(data):
     global latin_global
     global links_dict_global
 
+    title = data['title']
     url = data['url']
-    if url in links_dict_global:
-        del links_dict_global[url]
+    if title in links_dict_global and url == links_dict_global[title]:
+        del links_dict_global[title]
         latin_global.save_links(links_dict_global)
         on_add_delete_link_done()
 

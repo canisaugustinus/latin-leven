@@ -10,15 +10,18 @@ function sendQueryUpdate() {
 };
 
 function addLink() {
-    socket.emit('add_link', { 'url': $('#Link_Field').val() });
+    socket.emit('add_link', {
+    'title': $('#Link_Title_Field').val(),
+    'url': $('#Link_Url_Field').val()
+    });
 };
 
 function deleteImage() {
     $("#delete_image_dialog").dialog("open");
 };
 
-function deleteLink(url) {
-    socket.emit('delete_link', { 'url': url });
+function deleteLink(title, url) {
+    socket.emit('delete_link', { 'title': title, 'url': url });
 };
 
 function setLinkTable(data) {
@@ -27,9 +30,9 @@ function setLinkTable(data) {
 
     var iFinal = -1;
     var len = link_urls.length;
-    for (const [i, url] of link_urls) {
-        var newLink = '<td style="width: 200px;"><a href="'+url+'" target="_blank">'+url.substring(0, 28)+'</a></td>';
-        var newButton = '<td style="width: 50px;"><button onclick="deleteLink(&apos;'+url+'&apos;)">DĒLĒ</button></li></td>';
+    for (const [i, title, url] of link_urls) {
+        var newLink = '<td style="width: 200px;"><a href="'+url+'" target="_blank">'+title.substring(0, 28)+'</a></td>';
+        var newButton = '<td style="width: 50px;"><button onclick="deleteLink(&apos;'+title+'&apos;, &apos;'+url+'&apos;)">DĒLĒ</button></li></td>';
         var newRow = '<tr>'+newLink+newButton+'</tr>';
         if (tableBody.children().length > i) {
           tableBody.children().eq(i).replaceWith(newRow);
@@ -375,8 +378,13 @@ $(document).ready(function() {
                             <td  style="width: 200px;">
                                 <input
                                     type="text"
-                                    name="Link_Field"
-                                    id="Link_Field"
+                                    name="Link_Title_Field"
+                                    id="Link_Title_Field"
+                                />
+                                <input
+                                    type="text"
+                                    name="Link_Url_Field"
+                                    id="Link_Url_Field"
                                 />
                             </td>
                             <td  style="width: 50px;">
