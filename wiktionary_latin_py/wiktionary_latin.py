@@ -226,17 +226,18 @@ class Latin:
         links = {}
         with open(cls.LINKS, 'r') as f:
             for line in f:
-                vals = line.split(',')
-                link = vals[0].strip().replace('"', '%22').replace("'", '%27')
+                idx = line.find(',')
+                if idx >= 0:
+                    link = line[:idx].strip()
+                    title = line[idx + 1:].strip()
+                else:
+                    link = line.strip()
+                    title = link
+                link = link.replace('"', '%22').replace("'", '%27')
+
                 if not link:
                     continue
-                if len(vals) == 1:
-                    links[link] = link
-                else:
-                    title = vals[1].strip()
-                    if not title:
-                        title = link
-                    links[title] = link
+                links[title] = link
         return links
 
     @classmethod

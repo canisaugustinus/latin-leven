@@ -195,7 +195,9 @@ $(document).ready(function() {
 $(document).ready(function() {
     $("#Queries_Select").on("keyup", event => {
         if(event.key == "Enter") {
+            $("#Query_Field").val($("#Queries_Select option:selected").text());
             $("#perquire").click();
+            window.open($("#Queries_Select option:selected").val(), '_blank').focus();
         }
     });
 });
@@ -295,7 +297,7 @@ $(document).ready(function() {
                                     style="width:180px; height:80px;"
                                     size="10"
                                     id="Queries_Select"
-                                    onchange=
+                                    onclick=
                                         "document.getElementById('Query_Field').value=this.options[this.selectedIndex].text;
                                         document.getElementById('perquire').click();
                                         window.open(this.options[this.selectedIndex].value, '_blank').focus();">
