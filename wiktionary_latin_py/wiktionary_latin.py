@@ -4,7 +4,9 @@
 # https://learn.microsoft.com/en-us/visualstudio/python/working-with-c-cpp-python-in-visual-studio?view=vs-2022
 
 # install this package:
-# C:\Users\{USERNAME}\PycharmProjects\pythonProject\venv\Scripts\pip install {path}\weightdamleven_pybind11\weightdamleven\
+# <path_to_pip> install <repo>\weightdamleven_cpp
+# e.g.
+# C:\Users\{USERNAME}\PycharmProjects\pythonProject\venv\Scripts\pip install <repo>\weightdamleven_cpp
 # delete the auto-generated file:
 # C:\Users\{USERNAME}\AppData\Local\JetBrains\PyCharmCE2021.3\python_stubs\{number}\weightdamleven.py
 # then with THE "pybind11-stubgen" module:
@@ -265,12 +267,15 @@ def query_update_thread_func():
                     continue
 
                 text_ints = latin_global.convert_to_search_ints(text)
-                latin_words = wdl_suggestions_global.weighted_damerau_levenshtein_multithread(text_ints, 10)
-                for i, ints in enumerate(latin_words):
-                    latin_words[i] = ''.join([int_char_dict_global[ival] for ival in ints])
+                latin_words_scores = wdl_suggestions_global.weighted_damerau_levenshtein_multithread(text_ints, 10)
+                latin_words = defaultdict(lambda: [])
+                for i, (ints, score) in enumerate(latin_words_scores):
+                    latin_words[score].append(''.join([int_char_dict_global[ival] for ival in ints]))
+
                 suggestions = []
-                for i, word in enumerate(latin_words):
-                    suggestions.append([word, latin_global.create_url(word)])
+                for score in latin_words:
+                    for word in sorted(latin_words[score]):
+                        suggestions.append([word, latin_global.create_url(word)])
                 socketio.emit('on_query_update_done', {'suggestions': suggestions}, to=request_sid)
         time.sleep(0.001)
 
@@ -402,7 +407,7 @@ def sentio_felix():
     print(f"'sentio_felix': {text}")
     add_query_to_set(text)
     text_ints = latin_global.convert_to_search_ints(text)
-    latin_word = wdl_global.weighted_damerau_levenshtein_single_multithread(text_ints)
+    latin_word, score = wdl_global.weighted_damerau_levenshtein_single_multithread(text_ints)
     latin_word = ''.join([int_char_dict_global[ival] for ival in latin_word])
     url = latin_global.create_url(latin_word)
     return redirect(url)
@@ -426,11 +431,17 @@ def on_perquire(data):
     print(f"'perquire': {text}")
     add_query_to_set(text)
     text_ints = latin_global.convert_to_search_ints(text)
-    latin_words = wdl_global.weighted_damerau_levenshtein_multithread(text_ints, latin_global.MAX_RESULTS)
-    for i, ints in enumerate(latin_words):
-        latin_words[i] = ''.join([int_char_dict_global[ival] for ival in ints])
+    latin_words_scores = wdl_global.weighted_damerau_levenshtein_multithread(text_ints, latin_global.MAX_RESULTS)
+    latin_words = defaultdict(lambda: [])
+    for i, (ints, score) in enumerate(latin_words_scores):
+        latin_words[score].append(''.join([int_char_dict_global[ival] for ival in ints]))
+
+    suggestions = []
+    for score in latin_words:
+        suggestions += sorted(latin_words[score])
+
     titles_urls = []
-    for i, word in enumerate(latin_words):
+    for i, word in enumerate(suggestions):
         titles_urls.append([i, latin_global.int_to_roman_numeral(i + 1), word, latin_global.create_url(word)])
     socketio.emit('on_perquire_done', {'table': titles_urls, 'searches': list(searches_so_far_global.keys())}, to=request.sid)
 

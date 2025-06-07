@@ -113,7 +113,7 @@ public:
         return matrix.back().back();
     }
 
-    std::vector<std::vector<int>> weighted_damerau_levenshtein(
+    std::vector<std::tuple<std::vector<int>, double>> weighted_damerau_levenshtein(
         std::vector<int>& target_word_int,
         int num_results)
     {
@@ -149,16 +149,12 @@ public:
                 score_to_beat = min(score_to_beat, std::get<1>(word_scores[num_results - 1]));
             }
         }
-        
-        std::vector<std::vector<int>> words(num_results);
-        for (int i = 0; i < num_results; ++i)
-        {
-            words[i] = std::get<0>(word_scores[i]);
-        }
-        return words;
+
+        word_scores.resize(num_results);
+        return word_scores;
     }
 
-    std::vector<std::vector<int>> weighted_damerau_levenshtein_multithread(
+    std::vector<std::tuple<std::vector<int>, double>> weighted_damerau_levenshtein_multithread(
         std::vector<int>& target_word_int,
         int num_results)
     {
@@ -228,28 +224,24 @@ public:
             threads[i].join();
         }
 
-        std::vector<std::vector<int>> words(num_results);
-        for (int i = 0; i < num_results; ++i)
-        {
-            words[i] = std::get<0>(word_scores[i]);
-        }
-        return words;
+        word_scores.resize(num_results);
+        return word_scores;
     }
 
-    std::vector<int> weighted_damerau_levenshtein_single(
+    std::tuple<std::vector<int>, double> weighted_damerau_levenshtein_single(
         std::vector<int>& target_word_int)
     {
-        std::vector<std::vector<int>> words = weighted_damerau_levenshtein(
+        std::vector<std::tuple<std::vector<int>, double>> word_scores = weighted_damerau_levenshtein(
             target_word_int, 1);
-        return words[0];
+        return word_scores[0];
     }
 
-    std::vector<int> weighted_damerau_levenshtein_single_multithread(
+    std::tuple<std::vector<int>, double> weighted_damerau_levenshtein_single_multithread(
         std::vector<int>& target_word_int)
     {
-        std::vector<std::vector<int>> words = weighted_damerau_levenshtein_multithread(
+        std::vector<std::tuple<std::vector<int>, double>> word_scores = weighted_damerau_levenshtein_multithread(
             target_word_int, 1);
-        return words[0];
+        return word_scores[0];
     }
 };
 
