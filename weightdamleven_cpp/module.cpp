@@ -1,4 +1,4 @@
-#include <Windows.h>
+//#include <Windows.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <iostream>
@@ -90,20 +90,20 @@ public:
                 }
 
                 double insert_append_cost = j > len1 ? m_append_cost : m_insert_cost;
-                matrix[i][j] = min(
+                matrix[i][j] = std::min(
                     matrix[i - 1][j] + m_delete_cost, // delete
                     matrix[i][j - 1] + insert_append_cost); // insert
-                matrix[i][j] = min(
+                matrix[i][j] = std::min(
                     matrix[i][j],
                     matrix[i - 1][j - 1] + replace_cost_curr); // replace
                 if (i > 1 && j > 1 && str1_idx == str2[j - 2] && str1[i - 2] == str2_idx)
                 {
-                    matrix[i][j] = min(
+                    matrix[i][j] = std::min(
                         matrix[i][j],
                         matrix[i - 2][j - 2] + m_transpose_cost); // transpose
                 }
 
-                best_score_this_row = min(best_score_this_row, matrix[i][j]);
+                best_score_this_row = std::min(best_score_this_row, matrix[i][j]);
             }
             if (score_to_beat >= 0 && best_score_this_row >= score_to_beat)
             {
@@ -117,10 +117,10 @@ public:
         std::vector<int>& target_word_int,
         int num_results)
     {
-        num_results = max(num_results, 1);
+        num_results = std::max(num_results, 1);
         std::vector<std::tuple<std::vector<int>, double>> word_scores;
         word_scores.reserve(m_keys_encoded.size());
-        num_results = min(num_results, (int)(m_keys_encoded.size()));
+        num_results = std::min(num_results, (int)(m_keys_encoded.size()));
         double score_to_beat = -1.0;
 
         for (int counter = 0; counter < m_keys_encoded.size(); ++counter)
@@ -146,7 +146,7 @@ public:
             }
             else if (counter >= num_results)
             {
-                score_to_beat = min(score_to_beat, std::get<1>(word_scores[num_results - 1]));
+                score_to_beat = std::min(score_to_beat, std::get<1>(word_scores[num_results - 1]));
             }
         }
 
@@ -158,11 +158,11 @@ public:
         std::vector<int>& target_word_int,
         int num_results)
     {
-        num_results = max(num_results, 1);
+        num_results = std::max(num_results, 1);
         int thread_count = (int)std::thread::hardware_concurrency();
         std::vector<std::tuple<std::vector<int>, double>> word_scores;
         word_scores.reserve(m_keys_encoded.size());
-        num_results = min(num_results, (int)(m_keys_encoded.size()));
+        num_results = std::min(num_results, (int)(m_keys_encoded.size()));
         double score_to_beat = -1.0;
 
         std::mutex word_scores_mutex;
@@ -201,7 +201,7 @@ public:
                 }
                 else if (word_scores.size() > num_results)
                 {
-                    score_to_beat = min(score_to_beat, std::get<1>(word_scores[num_results - 1]));
+                    score_to_beat = std::min(score_to_beat, std::get<1>(word_scores[num_results - 1]));
                 }
             }
         };
@@ -212,7 +212,7 @@ public:
         std::vector<std::thread> threads(thread_count);
         for (int i = 0; i < thread_count; ++i)
         {
-            counter_stop = min(counter_start + chunk_size, (int)m_keys_encoded.size());
+            counter_stop = std::min(counter_start + chunk_size, (int)m_keys_encoded.size());
             threads[i] = std::thread(
                 score_loop,
                 counter_start,

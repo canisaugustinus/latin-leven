@@ -16,6 +16,7 @@
 
 import itertools
 import os
+import sys
 import pathlib
 import random
 import threading
@@ -515,4 +516,7 @@ def on_delete_image(data):
 if __name__ == "__main__":
     print("Ready.")
     #socketio.run(app, debug=True)
-    socketio.run(app, debug=False, host='0.0.0.0', port=5000)
+    host = '0.0.0.0' # localhost
+    port = 5000
+    sys.stdout.write('Done.')
+    socketio.run(app, debug=False, host=host, port=port)

@@ -70,4 +70,4 @@ if __name__ == '__main__':
         if response.status_code == 200:
             image_path = os.path.join(IMAGE_DIR, file)
             open(image_path, 'wb').write(response.content)
-        time.sleep(5)  # be nice and wait, grab a coffee or something
+        time.sleep(1)  # be nice and wait, grab a coffee or something
