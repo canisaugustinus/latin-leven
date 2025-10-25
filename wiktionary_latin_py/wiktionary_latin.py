@@ -335,21 +335,16 @@ def random_image() -> str:
             images_total_local[image] = None
 
     # add new images to the ordered set
-    for image in images_total_local:
-        if image not in images_total_global:
-            # a new image has been added to the folder
-            images_total_global[image] = None
-            images_remaining_global[image] = None
+    add_image_set = images_total_local.keys() - images_total_global.keys()
+    for image in add_image_set:
+        images_total_global[image] = None
+        images_remaining_global[image] = None
 
     # remove deleted images from the ordered set
-    del_image_list = []
-    for image in images_total_global:
-        if image not in images_total_local:
-            # an image has been deleted from the folder
-            del_image_list.append(image)
-    for image in del_image_list:
+    del_image_set = images_total_global.keys() - images_total_local.keys()
+    for image in del_image_set:
         del images_total_global[image]
-        images_remaining_global.pop(image, None)
+        images_remaining_global.pop(image, None) # returns None if image isn't present
 
     # if we've exhausted the images, start over
     if not images_remaining_global:
