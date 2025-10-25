@@ -11,7 +11,7 @@ from tqdm import tqdm
 class WiktextractParser:
     DIRECTORY = pathlib.Path(__file__).parent.parent.resolve()
     LINK = r'https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz'
-    CHUNK_SIZE = 8192
+    CHUNK_SIZE = 1024**2
     WIKTEXTRACT_DATA_GZ = os.path.join(DIRECTORY, "wiktionary_latin_py", "database", os.path.basename(LINK))
     WIKTEXTRACT_DATA = os.path.join(DIRECTORY, "wiktionary_latin_py", "database", "raw-wiktextract-data.jsonl")
     LATIN_WORDS = os.path.join(DIRECTORY, "wiktionary_latin_py", "database", "latin_words.txt")
@@ -24,26 +24,24 @@ class WiktextractParser:
         try:
             response = requests.get(cls.LINK, stream=True)
             response.raise_for_status() # error?
-
             total_size = int(response.headers.get('content-length', 0))
-            downloaded_size = 0
+            progress_bar = tqdm(
+                total=total_size,
+                unit='bytes',
+                desc="Downloading")
             with open(cls.WIKTEXTRACT_DATA_GZ, "wb") as f_out:
-                for chunk in tqdm(
-                        response.iter_content(chunk_size=cls.CHUNK_SIZE),
-                        total=total_size // cls.CHUNK_SIZE,
-                        unit='KB',
-                        desc="Downloading"):
+                for chunk in response.iter_content(chunk_size=cls.CHUNK_SIZE):
+                    progress_bar.update(cls.CHUNK_SIZE)
                     if chunk:
                         f_out.write(chunk)
-                        downloaded_size += len(chunk)
+            progress_bar.close()
         except requests.exceptions.RequestException as e:
             print(f"Error downloading file: {e}")
 
     @classmethod
-    def parse_latin_word_list_helper(cls, f_in) -> list[str]:
+    def parse_latin_word_list_helper(cls, f_in, file_size: int) -> list[str]:
         """ From the raw-wiktextract-data.jsonl data, pick out Latin words. """
         latin_words = {}  # use a dict as an ordered set
-        file_size = os.path.getsize(cls.WIKTEXTRACT_DATA)
         progress_bar = tqdm(desc="Loading Latin List", total=file_size)
         f_in_tell_prev = 0
         line = f_in.readline()
@@ -69,14 +67,17 @@ class WiktextractParser:
 
     @classmethod
     def parse_latin_word_list_from_file(cls) -> list[str]:
+        file_size = os.path.getsize(cls.WIKTEXTRACT_DATA)
         with open(cls.WIKTEXTRACT_DATA, 'r', encoding="utf-8") as f_in:
-            return cls.parse_latin_word_list_helper(f_in)
+            return cls.parse_latin_word_list_helper(f_in, file_size)
 
     @classmethod
     def parse_latin_word_list_from_url(cls) -> list[str]:
         cls.download_raw_wiktextract_data_jsonl()
+        with gzip.open(cls.WIKTEXTRACT_DATA_GZ, 'rb') as f_in:
+            file_size = f_in.seek(0, os.SEEK_END)
         with gzip.open(cls.WIKTEXTRACT_DATA_GZ, 'rt', encoding='utf-8') as f_in:
-            return cls.parse_latin_word_list_helper(f_in)
+            return cls.parse_latin_word_list_helper(f_in, file_size)
 
 
 if __name__ == '__main__':
