@@ -16,6 +16,7 @@
 
 import itertools
 import os
+import subprocess
 import sys
 import pathlib
 import random
@@ -513,5 +514,6 @@ if __name__ == "__main__":
     #socketio.run(app, debug=True)
     host = '0.0.0.0' # localhost
     port = 5000
-    sys.stdout.write('Done.')
+    if len(sys.argv) > 1:
+        subprocess.Popen(sys.argv[1:])
     socketio.run(app, debug=False, host=host, port=port)
