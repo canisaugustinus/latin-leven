@@ -252,6 +252,7 @@ $(document).ready(function() {
 </script>
 
 <!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet"
       type="text/css"
       href="/static/node_modules/jqueryui/jquery-ui.css"
@@ -273,6 +274,69 @@ $(document).ready(function() {
     display: flex;
     align-items: flex-start;
   }
+
+@media (max-width: 600px) {
+
+  /* Collapse 4-column grid to single column */
+  .page-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Reorder grid children for logical mobile flow:
+     1. Search form  2. Results  3. Prev-searches label
+     4. Prev-searches table  5. Links  6. Delete-image btn
+     (image hidden, spacer suppressed) */
+  .page-grid > div:nth-child(2) { order: 3; }  /* label */
+  .page-grid > div:nth-child(3) { order: 7; }  /* spacer */
+  .page-grid > div:nth-child(4) { order: 6; }  /* DĒLĒ IMĀGINEM */
+  .page-grid > div:nth-child(5) { order: 2; }  /* results table */
+  .page-grid > div:nth-child(6) { order: 4; }  /* prev-searches table */
+  .page-grid > div:nth-child(7) { order: 5; }  /* link management */
+  .page-grid > div:nth-child(8) { order: 8; }  /* image */
+
+  /* Fluid widths for fixed-width tables (inline style needs !important) */
+  #Result_Table,
+  #Previous_Search_Table,
+  #Link_Table {
+    width: 100% !important;
+    table-layout: auto !important;
+  }
+
+  /* Fluid autocomplete select */
+  #Queries_Select {
+    width: 100% !important;
+  }
+
+  /* Fluid text inputs */
+  #Query_Field,
+  #Link_Title_Field,
+  #Link_Url_Field {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Stack flex rows vertically on mobile */
+  .search-row,
+  .link-row {
+    flex-direction: column;
+  }
+
+  /* Touch-friendly tap targets (44px minimum) */
+  input[type="submit"],
+  button,
+  #Query_Field,
+  #Link_Title_Field,
+  #Link_Url_Field {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  /* Prevent h1 overflow */
+  h1 {
+    font-size: 1.1rem;
+    word-break: break-word;
+  }
+}
 </style>
 
 <div id="delete_image_dialog" title="CŌNFIRMĀTIŌ">
