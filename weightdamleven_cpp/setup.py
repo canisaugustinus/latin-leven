@@ -1,7 +1,9 @@
 from setuptools import setup, Extension
+import sys
 import pybind11
 
-cpp_args = []
+cpp_args = ['/O2', '/std:c++17'] if sys.platform == 'win32' \
+           else ['-O3', '-march=native', '-std=c++17']
 
 sfc_module = Extension(
     'weightdamleven',

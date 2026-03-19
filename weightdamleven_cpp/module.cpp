@@ -5,9 +5,22 @@
 #include <tuple>
 #include <thread>
 #include <mutex>
+#include <atomic>
+#include <queue>
 #include <algorithm>
 
 namespace py = pybind11;
+
+struct WordScore
+{
+    std::vector<int> word;
+    double score{};
+
+    bool operator<(const WordScore& rhs) const
+    {
+        return score < rhs.score;
+    }
+};
 
 class WeightDamLeven
 {
@@ -48,30 +61,47 @@ public:
         const std::vector<int>& str2,
         const double score_to_beat)
     {
-        size_t len1 = str1.size();
-        size_t len2 = str2.size();
-        std::vector<std::vector<double>> matrix(len1 + 1);
-        for (int i = 0; i < len1 + 1; ++i)
+        int len1 = (int)str1.size();
+        int len2 = (int)str2.size();
+
+        // 3-row dynamic programming - only rows i, i-1, i-2 are needed
+        // thread_local buffers - reused across calls, eliminates heap allocation in steady state
+        thread_local std::vector<double> row0, row1, row2;
+        std::vector<double>* rows[3] = { &row0, &row1, &row2 };
+        for (auto* r : rows)
         {
-            matrix[i] = std::vector<double>(len2 + 1, 0.0);
+            if ((int)r->size() < len2 + 1)
+            {
+                r->resize(len2 + 1);
+            }
         }
-        for (int i = 1; i < len1 + 1; ++i)
-        {
-            matrix[i][0] = i * m_delete_cost;
-        }
-        for (int j = 1; j < len2 + 1; ++j)
+
+        // p1 = row i-1 index, p2 = row i-2 index, cur = row being written
+        int cur = 2;
+        int p1 = 0;
+        int p2 = 1;
+
+        // initialize row 0 into rows[p1]
+        (*rows[p1])[0] = 0.0;
+        for (int j = 1; j <= len2; ++j)
         {
             double insert_append_cost = j > len1 ? m_append_cost : m_insert_cost;
-            matrix[0][j] = matrix[0][j-1] + insert_append_cost;
+            (*rows[p1])[j] = (*rows[p1])[j - 1] + insert_append_cost;
         }
-        for (int i = 1; i < len1 + 1; ++i)
+
+        for (int i = 1; i <= len1; ++i)
         {
-            double best_score_this_row = matrix[i][0];
-            for (int j = 1; j < len2 + 1; ++j)
+            // reset column 0 so that (*rows[cur])[j - 1] works when j == 1
+            (*rows[cur])[0] = i * m_delete_cost; 
+            
+            double best_score_this_row = (*rows[cur])[0];
+
+            for (int j = 1; j <= len2; ++j)
             {
-                double replace_cost_curr = 0.0;
                 int str1_idx = str1[i - 1];
                 int str2_idx = str2[j - 1];
+
+                double replace_cost_curr;
                 if (str1_idx == str2_idx)
                 {
                     replace_cost_curr = 0.0;
@@ -79,7 +109,7 @@ public:
                 else if (m_is_key_cost)
                 {
                     replace_cost_curr = m_replace_cost;
-                    if (str1_idx < m_cost_matrix.size() && str2_idx < m_cost_matrix.size())
+                    if (str1_idx < (int)m_cost_matrix.size() && str2_idx < (int)m_cost_matrix.size())
                     {
                         replace_cost_curr = m_cost_matrix[str1_idx][str2_idx];
                     }
@@ -90,27 +120,60 @@ public:
                 }
 
                 double insert_append_cost = j > len1 ? m_append_cost : m_insert_cost;
-                matrix[i][j] = std::min(
-                    matrix[i - 1][j] + m_delete_cost, // delete
-                    matrix[i][j - 1] + insert_append_cost); // insert
-                matrix[i][j] = std::min(
-                    matrix[i][j],
-                    matrix[i - 1][j - 1] + replace_cost_curr); // replace
+                (*rows[cur])[j] = std::min(
+                    (*rows[p1])[j] + m_delete_cost, // delete
+                    (*rows[cur])[j - 1] + insert_append_cost); // insert
+                (*rows[cur])[j] = std::min(
+                    (*rows[cur])[j],
+                    (*rows[p1])[j - 1] + replace_cost_curr); // replace
+
                 if (i > 1 && j > 1 && str1_idx == str2[j - 2] && str1[i - 2] == str2_idx)
                 {
-                    matrix[i][j] = std::min(
-                        matrix[i][j],
-                        matrix[i - 2][j - 2] + m_transpose_cost); // transpose
+                    (*rows[cur])[j] = std::min(
+                        (*rows[cur])[j],
+                        (*rows[p2])[j - 2] + m_transpose_cost); // transpose
                 }
 
-                best_score_this_row = std::min(best_score_this_row, matrix[i][j]);
+                best_score_this_row = std::min(best_score_this_row, (*rows[cur])[j]);
             }
+
             if (score_to_beat >= 0 && best_score_this_row >= score_to_beat)
             {
                 return score_to_beat + 1.0;
             }
+
+            // recall p1 = row i-1 index, p2 = row i-2 index, cur = row being written
+            // rotate: p2 -> p1; p1 -> cur; cur (recycled) -> p2 (oldest)
+            // so p2 and p1 move up one index, and cur just uses the old p2 space
+            int tmp = p2;
+            p2 = p1;
+            p1 = cur;
+            cur = tmp;
         }
-        return matrix.back().back();
+
+        return (*rows[p1])[len2]; // p1 holds the last written row after the final rotate
+    }
+
+    std::vector<std::tuple<std::vector<int>, double>> sort_word_scores(
+        std::priority_queue<WordScore, std::vector<WordScore>>& heap)
+    {
+        // sort the results from best (lowest) to worst (highest)
+        std::vector<WordScore> word_scores;
+        word_scores.reserve(heap.size());
+        while (!heap.empty())
+        {
+            word_scores.push_back(heap.top());
+            heap.pop();
+        }
+        std::sort(word_scores.begin(), word_scores.end());
+
+        // convert to the return type: vector of tuples for Python
+        std::vector<std::tuple<std::vector<int>, double>> result(word_scores.size());
+        for (size_t i = 0; i < word_scores.size(); ++i)
+        {
+            result[i] = {word_scores[i].word, word_scores[i].score};
+        }
+        return result;
     }
 
     std::vector<std::tuple<std::vector<int>, double>> weighted_damerau_levenshtein(
@@ -118,69 +181,65 @@ public:
         int num_results)
     {
         num_results = std::max(num_results, 1);
-        std::vector<std::tuple<std::vector<int>, double>> word_scores;
-        word_scores.reserve(m_keys_encoded.size());
         num_results = std::min(num_results, (int)(m_keys_encoded.size()));
-        double score_to_beat = -1.0;
 
-        for (int counter = 0; counter < m_keys_encoded.size(); ++counter)
+        // max-heap of capacity num_results: top() is the worst (highest) accepted score
+        // insertion is O(log[num_results])
+        std::priority_queue<WordScore, std::vector<WordScore>> heap;
+
+        for (int counter = 0; counter < (int)m_keys_encoded.size(); ++counter)
         {
             std::vector<int>& word = m_keys_encoded[counter];
-
-            // Inserting elements in sorted order
+            double score_to_beat = ((int)heap.size() < num_results) ? -1.0 : heap.top().score;
             double score = key_weighted_damerau_levenshtein(
                 target_word_int,
                 word,
                 score_to_beat);
-            if (score_to_beat >= 0 && score >= score_to_beat)
+
+            if ((int)heap.size() < num_results)
             {
-                continue;
+                heap.push({ word, score });
             }
-            std::tuple<std::vector<int>, double> new_word_score(word, score);
-            auto it = upper_bound(word_scores.begin(), word_scores.end(), new_word_score,
-                [](const auto& a, const auto& b) { return std::get<1>(a) < std::get<1>(b); });
-            word_scores.insert(it, new_word_score);
-            if (counter == num_results - 1)
+            else if (score < heap.top().score)
             {
-                score_to_beat = std::get<1>(word_scores[num_results - 1]);
-            }
-            else if (counter >= num_results)
-            {
-                score_to_beat = std::min(score_to_beat, std::get<1>(word_scores[num_results - 1]));
+                heap.pop();
+                heap.push({ word, score });
             }
         }
 
-        word_scores.resize(num_results);
-        return word_scores;
+        return sort_word_scores(heap);
     }
 
     std::vector<std::tuple<std::vector<int>, double>> weighted_damerau_levenshtein_multithread(
         std::vector<int>& target_word_int,
         int num_results)
     {
-        num_results = std::max(num_results, 1);
         int thread_count = (int)std::thread::hardware_concurrency();
-        std::vector<std::tuple<std::vector<int>, double>> word_scores;
-        word_scores.reserve(m_keys_encoded.size());
+        num_results = std::max(num_results, 1);
         num_results = std::min(num_results, (int)(m_keys_encoded.size()));
-        double score_to_beat = -1.0;
 
-        std::mutex word_scores_mutex;
+        std::mutex heap_mutex;
+        std::priority_queue<WordScore, std::vector<WordScore>> heap;
+        // atomic<double> avoids data race: score_to_beat_atomic is read outside
+        // the mutex but written inside it.
+        // relaxed ordering is sufficient — this is a pruning hint,
+        // not a synchronisation point.
+        std::atomic<double> score_to_beat_atomic{ -1.0 };
+
         auto score_loop = [
             this,
             &num_results,
             &target_word_int,
-            &word_scores_mutex,
-            &word_scores,
-            &score_to_beat](
+            &heap_mutex,
+            &heap,
+            &score_to_beat_atomic](
             int counter_start,
             int counter_stop)
         {
             for (int counter = counter_start; counter < counter_stop; ++counter)
             {
                 std::vector<int>& word = m_keys_encoded[counter];
-
-                // Inserting elements in sorted order
+                double score_to_beat = score_to_beat_atomic.load(std::memory_order_relaxed);
                 double score = key_weighted_damerau_levenshtein(
                     target_word_int,
                     word,
@@ -190,18 +249,20 @@ public:
                     continue;
                 }
 
-                std::lock_guard<std::mutex> lock(word_scores_mutex); // Acquire mutex
-                std::tuple<std::vector<int>, double> new_word_score(word, score);
-                auto it = upper_bound(word_scores.begin(), word_scores.end(), new_word_score,
-                    [](const auto& a, const auto& b) { return std::get<1>(a) < std::get<1>(b); });
-                word_scores.insert(it, new_word_score);
-                if (word_scores.size() == num_results)
+                std::lock_guard<std::mutex> lock(heap_mutex);
+                if ((int)heap.size() < num_results)
                 {
-                    score_to_beat = std::get<1>(word_scores[num_results - 1]);
+                    heap.push({ word, score });
+                    if ((int)heap.size() == num_results)
+                    {
+                        score_to_beat_atomic.store(heap.top().score, std::memory_order_relaxed);
+                    }
                 }
-                else if (word_scores.size() > num_results)
+                else if (score < heap.top().score)
                 {
-                    score_to_beat = std::min(score_to_beat, std::get<1>(word_scores[num_results - 1]));
+                    heap.pop();
+                    heap.push({ word, score });
+                    score_to_beat_atomic.store(heap.top().score, std::memory_order_relaxed);
                 }
             }
         };
@@ -224,24 +285,19 @@ public:
             threads[i].join();
         }
 
-        word_scores.resize(num_results);
-        return word_scores;
+        return sort_word_scores(heap);
     }
 
     std::tuple<std::vector<int>, double> weighted_damerau_levenshtein_single(
         std::vector<int>& target_word_int)
     {
-        std::vector<std::tuple<std::vector<int>, double>> word_scores = weighted_damerau_levenshtein(
-            target_word_int, 1);
-        return word_scores[0];
+        return weighted_damerau_levenshtein(target_word_int, 1)[0];
     }
 
     std::tuple<std::vector<int>, double> weighted_damerau_levenshtein_single_multithread(
         std::vector<int>& target_word_int)
     {
-        std::vector<std::tuple<std::vector<int>, double>> word_scores = weighted_damerau_levenshtein_multithread(
-            target_word_int, 1);
-        return word_scores[0];
+        return weighted_damerau_levenshtein_multithread(target_word_int, 1)[0];
     }
 };
 
