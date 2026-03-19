@@ -20,5 +20,12 @@ Build Instructions
 10. In the petscan.wmcloud.org "Output" tab, change the "Format" to "CSV." Save the output to {latin-leven repo}\wiktionary_latin_py\database\rome_images.csv.
 11. Edit the `HEADERS` variable of the Python script {latin-leven repo}\tools\random_ancient_rome.py with the `'User-Agent'` bot name and email address of your choice. Follow Wikimedia's [User-Agent Policy](https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy).
 12. Download the images by running {latin-leven repo}\tools\random_ancient_rome.py.
-13. Build the projects defined in {latin-leven repo}\wiktionary_latin.sln.
+13. a. Either... in `{latin-leven repo}\weightdamleven_cpp`, run `python setup.py install`.
+13. b. Or... build the projects defined in {latin-leven repo}\wiktionary_latin.sln. Edit the project for you environment:
+-   `pip install pybind11`
+-   `python -m pybind11 --includes` returns a list of includes  
+    Add these to project properties -> C/C++ -> General -> Additional Include Directories.
+-   Link your Python library (e.g., `C:\...\Python3x\libs\python3x.lib`, where 3x is your Python version):  
+    Add this to project properties -> Linker -> General -> Additional Library Dependencies.
+-   Put the generated .pyd file in your `C:\...\Python3x\Lib\site-packages`.
 14. Run {latin-leven repo}\wiktionary_latin_py\wiktionary_latin.py to start the server. Connect to http://localhost:5000/ to start searching with spellchecking powered by a fast weighted Damerau–Levenshtein implementation.

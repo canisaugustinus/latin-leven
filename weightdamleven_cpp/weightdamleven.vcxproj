@@ -113,14 +113,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\$(USERNAME)\AppData\Local\Programs\Python\Python310\include;C:\Users\$(USERNAME)\AppData\Local\Programs\Python\Python310\Lib\site-packages\pybind11\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\$(USERNAME)\AppData\Local\Programs\Python\Python310\include;C:\Users\$(USERNAME)\AppData\Local\Programs\Python\Python310\Lib\site-packages\pybind11\include;C:\Users\$(USERNAME)\AppData\Local\Programs\Python\Python311\Include;C:\Users\$(USERNAME)\AppData\Local\Programs\Python\Python311\Lib\site-packages\pybind11\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\$(USERNAME)\AppData\Local\Programs\Python\Python310\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\$(USERNAME)\AppData\Local\Programs\Python\Python310\libs;C:\Users\$(USERNAME)\AppData\Local\Programs\Python\Python311\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
