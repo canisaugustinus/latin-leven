@@ -138,13 +138,15 @@ class Latin:
     def calc_char_char_cost(cls) -> defaultdict[tuple[str, str], complex]:
         """ char_char_cost[(char1, char2)] = the cost of replacing char1 with char2. """
         char_layout = [
-            "qwertyuiop",
-            "asdfghjkl",
-            "zxcvbnm"]
-        char_dict = defaultdict(lambda: 100.0 + 0j)  # complex values make finding the distance easier
+            "`1234567890-=",
+            "qwertyuiop[]\\",
+            "asdfghjkl;'",
+            "zxcvbnm,./"]
+        char_rows = [float(i) for i in range(len(char_layout))]
+        col_offsets = [0.0, 1.5, 2.0, 2.5]  # the rows are staggered, so add an offset to the columns for each row
         char_cols = [np.arange(len(row)) for row in char_layout]
-        char_cols = [row + 0.5*i for i, row in enumerate(char_cols)]
-        char_rows = [0.0, 1.0, 2.0]
+        char_cols = [cols + col_offsets[i] for i, cols in enumerate(char_cols)]
+        char_dict = defaultdict(lambda: 100.0 + 0j)  # complex values make finding the distance easier
         for row in range(len(char_layout)):
             for col in range(len(char_layout[row])):
                 val = char_rows[row] + 1j*char_cols[row][col]
