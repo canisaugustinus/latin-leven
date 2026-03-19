@@ -1,0 +1,7 @@
+flask
+flask-socketio
+numpy
+send2trash
+pybind11
+requests
+tqdm
