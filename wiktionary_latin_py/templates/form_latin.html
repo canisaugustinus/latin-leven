@@ -256,6 +256,25 @@ $(document).ready(function() {
       type="text/css"
       href="/static/node_modules/jqueryui/jquery-ui.css"
 />
+<style>
+  .page-grid {
+    display: grid;
+    grid-template-columns: 400px 200px 250px auto;
+    align-items: start;
+  }
+  .align-bottom {
+    align-self: end;
+  }
+  .search-row {
+    display: flex;
+    align-items: flex-start;
+  }
+  .link-row {
+    display: flex;
+    align-items: flex-start;
+  }
+</style>
+
 <div id="delete_image_dialog" title="CŌNFIRMĀTIŌ">
   <p>CERTUS ES?</p>
 </div>
@@ -266,165 +285,119 @@ $(document).ready(function() {
     </a>
 </h1>
 
-<div class="row">
-    <table style="table-layout: fixed;">
-        <tr>
-            <td style="vertical-align:top;">
-                <table style="table-layout: fixed; width: 400px;">
-                    <tbody>
-                        <tr>
-                            <td>
-                                <input type="submit" name="domus" id="domus" value="DOMVS">
-                                <br>
-                                <input
-                                    type="text"
-                                    name="Query_Field"
-                                    id="Query_Field"
-                                    value="{{query_value}}"
-                                    oninput="sendQueryUpdate()"
-                                    autofocus
-                                    onfocus="var temp_value=this.value; this.value=''; this.value=temp_value"
-                                />
-                                <br>
-                                <!-- <input type="submit" name="quaere" id="quaere"value="QVAERE"> -->
-                                <input type="submit" name="perquire" id="perquire" value="PERQVĪRE">
-                                <input type="submit" name="sentio_felix" id="sentio_felix" value="SENTIŌ FĒLĪX" formtarget="_blank">
-                                <br>
-                            </td>
+<div class="page-grid">
+    <!-- Row 1, Col 1: Search form -->
+    <div>
+        <div class="search-row">
+            <div>
+                <input type="submit" name="domus" id="domus" value="DOMVS">
+                <br>
+                <input
+                    type="text"
+                    name="Query_Field"
+                    id="Query_Field"
+                    value="{{query_value}}"
+                    oninput="sendQueryUpdate()"
+                    autofocus
+                    onfocus="var temp_value=this.value; this.value=''; this.value=temp_value"
+                />
+                <br>
+                <!-- <input type="submit" name="quaere" id="quaere"value="QVAERE"> -->
+                <input type="submit" name="perquire" id="perquire" value="PERQVĪRE">
+                <input type="submit" name="sentio_felix" id="sentio_felix" value="SENTIŌ FĒLĪX" formtarget="_blank">
+                <br>
+            </div>
+            <div>
+                <select
+                    style="width:180px; height:80px;"
+                    size="10"
+                    id="Queries_Select"
+                    onclick=
+                        "document.getElementById('Query_Field').value=this.options[this.selectedIndex].text;
+                        document.getElementById('perquire').click();
+                        window.open(this.options[this.selectedIndex].value, '_blank').focus();">
+                </select>
+            </div>
+        </div>
+    </div>
 
-                            <td>
-                                <select
-                                    style="width:180px; height:80px;"
-                                    size="10"
-                                    id="Queries_Select"
-                                    onclick=
-                                        "document.getElementById('Query_Field').value=this.options[this.selectedIndex].text;
-                                        document.getElementById('perquire').click();
-                                        window.open(this.options[this.selectedIndex].value, '_blank').focus();">
-                                </select>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </td>
+    <!-- Row 1, Col 2: Previous searches label -->
+    <div class="align-bottom">
+        INQUĪSĪTIŌNĒS PRIŌRĒS
+    </div>
 
-            <td style="vertical-align:bottom;">
-                <table style="table-layout: fixed; width: 200px;">
-                    <tbody>
-                        <tr>
-                            <td>
-                                INQUĪSĪTIŌNĒS PRIŌRĒS
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </td>
+    <!-- Row 1, Col 3: spacer -->
+    <div></div>
 
-            <td style="vertical-align:top;">
-                <table style="table-layout: fixed; width: 250px;">
-                    <tbody>
-                        <tr>
-                            <td  style="width: 200px;"> </td>
-                            <td  style="width: 50px;"> </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </td>
+    <!-- Row 1, Col 4: Delete image button -->
+    <div class="align-bottom">
+        <button onclick="deleteImage()">DĒLĒ IMĀGINEM</button>
+    </div>
 
-            <td style="vertical-align:bottom; table-layout: fixed; width: 400px;">
-                <table>
-                    <tbody>
-                        <tr>
-                            <td>
-                                <button onclick="deleteImage()">DĒLĒ IMĀGINEM</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </td>
-        </tr>
-    </table>
+    <!-- Row 2, Col 1: Results table -->
+    <div>
+        <table id="Result_Table" style="table-layout: fixed; width: 400px;">
+            <tbody id="Result_Table_Body">
+                {% for i, index, title, url in titles_urls %}
+                    <tr>
+                        <td>{{index}}</td>
+                        <td><a href="{{url}}" target="_blank">{{title}}</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-    <table style="table-layout: fixed;">
-        <tr>
-            <td style="vertical-align:top;">
-                <table id="Result_Table"  style="table-layout: fixed; width: 400px;">
-                    <tbody id="Result_Table_Body">
-                        {% for i, index, title, url in titles_urls %}
-                            <tr>
-                                <td>{{index}}</td>
-                                <td><a href="{{url}}" target="_blank">{{title}}</a></td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </td>
+    <!-- Row 2, Col 2: Previous searches table -->
+    <div>
+        <table id="Previous_Search_Table" style="table-layout: fixed; width: 200px;">
+            <tbody id="Previous_Search_Table_Body">
+                {% for query_val in searches_so_far %}
+                    {% set url = url_for('perquire') + '?quaestio=' + query_val %}
+                    <tr>
+                        <td><a href="{{url}}" target="_self">{{query_val}}</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-            <td style="vertical-align:top;">
-                <table id="Previous_Search_Table"  style="table-layout: fixed; width: 200px;">
-                    <tbody id="Previous_Search_Table_Body">
-                        {% for query_val in searches_so_far %}
-                            {% set url = url_for('perquire') + '?quaestio=' + query_val %}
-                            <tr>
-                                <td><a href="{{url}}" target="_self">{{query_val}}</a></td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </td>
+    <!-- Row 2, Col 3: Link management -->
+    <div>
+        <div class="link-row">
+            <div>
+                <input
+                    type="text"
+                    name="Link_Title_Field"
+                    id="Link_Title_Field"
+                />
+                <input
+                    type="text"
+                    name="Link_Url_Field"
+                    id="Link_Url_Field"
+                />
+            </div>
+            <div>
+                <button onclick="addLink()">ADDE</button>
+            </div>
+        </div>
+        <table id="Link_Table" style="table-layout: fixed; width: 200px;">
+            <tbody id="Link_Table_Body">
+                {% for i, url in link_urls %}
+                    <tr>
+                        <td><a href="{{url}}" target="_blank">{{url}}</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-            <td style="vertical-align:top;">
-                <table style="table-layout: fixed; width: 250px;">
-                    <tbody>
-                        <tr>
-                            <td  style="width: 200px;">
-                                <input
-                                    type="text"
-                                    name="Link_Title_Field"
-                                    id="Link_Title_Field"
-                                />
-                                <input
-                                    type="text"
-                                    name="Link_Url_Field"
-                                    id="Link_Url_Field"
-                                />
-                            </td>
-                            <td  style="width: 50px;">
-                                <button onclick="addLink()">ADDE</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <table id="Link_Table"  style="table-layout: fixed; width: 200px;">
-                                    <tbody id="Link_Table_Body">
-                                        {% for i, url in link_urls %}
-                                            <tr>
-                                                <td><a href="{{url}}" target="_blank">{{url}}</a></td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </td>
-
-            <td style="vertical-align:top; table-layout: fixed; width: 400px;">
-                <table>
-                    <tbody>
-                        <tr>
-                            <td>
-                                <input name="Image_Logo_Field" id="Image_Logo_Field" type="hidden" value="{{image_logo}}">
-                                <a href="{{image_logo}}" target="_blank">
-                                    <img src="{{image_logo}}" style="background-color: #A9A9A9" height="240px" align="left">
-                                </a>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </td>
-        </tr>
-    </table>
+    <!-- Row 2, Col 4: Image -->
+    <div>
+        <input name="Image_Logo_Field" id="Image_Logo_Field" type="hidden" value="{{image_logo}}">
+        <a href="{{image_logo}}" target="_blank">
+            <img src="{{image_logo}}" style="background-color: #A9A9A9" height="240px" align="left">
+        </a>
+    </div>
 </div>
 
