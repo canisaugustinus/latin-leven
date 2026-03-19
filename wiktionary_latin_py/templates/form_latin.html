@@ -31,8 +31,8 @@ function setLinkTable(data) {
     var iFinal = -1;
     var len = link_urls.length;
     for (const [i, title, url] of link_urls) {
-        var newLink = '<td style="width: 200px;"><a href="'+url+'" target="_blank">'+title.substring(0, 28)+'</a></td>';
-        var newButton = '<td style="width: 50px;"><button onclick="deleteLink(&apos;'+title+'&apos;, &apos;'+url+'&apos;)">DĒLĒ</button></li></td>';
+        var newLink = '<td style="width: 175px;"><a href="'+url+'" target="_blank">'+title.substring(0, 28)+'</a></td>';
+        var newButton = '<td style="width: 75px;"><button onclick="deleteLink(&apos;'+title+'&apos;, &apos;'+url+'&apos;)">DĒLĒ</button></li></td>';
         var newRow = '<tr>'+newLink+newButton+'</tr>';
         if (tableBody.children().length > i) {
           tableBody.children().eq(i).replaceWith(newRow);
@@ -108,10 +108,11 @@ function setQueriesDataList(data) {
     suggestions = data.suggestions;
     var queries = $('#Queries_Select');
     queries.empty();
+    queries[0].scrollTop = 0;
 
     for (const [word, url] of suggestions) {
-          var option = $("<option>" + word + "</option>").attr("value", url);
-          queries.append(option);
+        var item = $('<div class="suggestion-item"></div>').text(word).attr("data-url", url);
+        queries.append(item);
     }
 };
 
@@ -192,13 +193,38 @@ $(document).ready(function() {
     });
 });
 
+function selectSuggestion(index) {
+    var items = $('#Queries_Select .suggestion-item');
+    items.removeClass('suggestion-selected');
+    if (index >= 0 && index < items.length) {
+        items.eq(index).addClass('suggestion-selected');
+        //items.eq(index)[0].scrollIntoView({ block: 'nearest' });
+    }
+}
+
 $(document).ready(function() {
-    $("#Queries_Select").on("keyup", event => {
-        if(event.key == "Enter") {
-            $("#Query_Field").val($("#Queries_Select option:selected").text());
-            $("#perquire").click();
-            window.open($("#Queries_Select option:selected").val(), '_blank').focus();
+    // Left click: update page AND open Wiktionary
+    $('#Queries_Select').on('click', '.suggestion-item', function() {
+        document.getElementById('Query_Field').value = $(this).text();
+        var tab = window.open($(this).attr('data-url'), '_blank');
+        if (tab) tab.focus();
+        setTimeout(function() { document.getElementById('perquire').click(); }, 0);
+    });
+
+    // Middle click: update page AND open Wiktionary
+    $('#Queries_Select').on('mousedown', '.suggestion-item', function(event) {
+        if (event.button === 1) {
+            event.preventDefault();
+            document.getElementById('Query_Field').value = $(this).text();
+            var tab = window.open($(this).attr('data-url'), '_blank');
+            if (tab) tab.focus();
+            setTimeout(function() { document.getElementById('perquire').click(); }, 0);
         }
+    });
+
+    // Hover: update visual selection
+    $('#Queries_Select').on('mouseover', '.suggestion-item', function() {
+        selectSuggestion($('#Queries_Select .suggestion-item').index(this));
     });
 });
 
@@ -253,15 +279,170 @@ $(document).ready(function() {
 
 <!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet"
       type="text/css"
       href="/static/node_modules/jqueryui/jquery-ui.css"
 />
 <style>
+  :root {
+    --col-bg:          #1a0e05;
+    --col-panel:       #2e1a08;
+    --col-panel-alt:   #231408;
+    --col-gold:        #b8962e;
+    --col-gold-bright: #d4a843;
+    --col-amber:       #d4891a;
+    --col-text:        #e8d4a0;
+    --col-text-dim:    #a89060;
+    --col-btn-bg:      #3d2010;
+    --col-input-bg:    #1e1005;
+  }
+
+  html, body {
+    background-color: var(--col-bg);
+    background-image: radial-gradient(ellipse at center, #2a1508 0%, #1a0e05 70%, #0d0702 100%);
+    color: var(--col-text);
+    font-family: 'Crimson Text', Georgia, 'Times New Roman', serif;
+    font-size: 1.1rem;
+    margin: 8px;
+  }
+
+  h1 {
+    font-family: 'Cinzel', 'Times New Roman', serif;
+    font-weight: 700;
+    color: var(--col-gold);
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 18px #b8962e88, 0 2px 4px #000a;
+    margin-bottom: 0.4em;
+  }
+
+  a {
+    color: var(--col-amber);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--col-gold-bright);
+    text-decoration: underline;
+  }
+
+  button,
+  input[type="submit"] {
+    font-family: 'Cinzel', 'Times New Roman', serif;
+    font-size: 0.85rem;
+    color: var(--col-gold);
+    background-color: var(--col-btn-bg);
+    border: 1px solid var(--col-gold);
+    padding: 4px 10px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: background-color 0.15s, color 0.15s;
+  }
+  button:hover,
+  input[type="submit"]:hover {
+    background-color: var(--col-gold);
+    color: #1a0e05;
+  }
+
+  input[type="text"] {
+    font-family: 'Crimson Text', Georgia, serif;
+    font-size: 1rem;
+    color: var(--col-text);
+    background-color: var(--col-input-bg);
+    border: 1px solid var(--col-gold);
+    padding: 3px 6px;
+    outline: none;
+  }
+  input[type="text"]:focus {
+    box-shadow: 0 0 6px var(--col-gold);
+    border-color: var(--col-gold-bright);
+  }
+  input[type="text"]::placeholder {
+    color: var(--col-text-dim);
+    font-style: italic;
+  }
+
+  select {
+    font-family: 'Crimson Text', Georgia, serif;
+    font-size: 1rem;
+    color: var(--col-text);
+    background-color: var(--col-input-bg);
+    border: 1px solid var(--col-gold);
+    padding: 2px 4px;
+  }
+  select option {
+    background-color: var(--col-panel);
+    color: var(--col-text);
+  }
+
+  table td {
+    border-bottom: 1px solid #b8962e33;
+    padding: 2px 4px;
+  }
+  table tr:nth-child(even) td {
+    background-color: var(--col-panel-alt);
+  }
+
+  .section-label {
+    font-family: 'Cinzel', 'Times New Roman', serif;
+    font-size: 0.8rem;
+    color: var(--col-gold);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  /* jQueryUI dialog overrides */
+  .ui-dialog {
+    background: var(--col-panel) !important;
+    background-color: var(--col-panel) !important;
+    border: 1px solid var(--col-gold) !important;
+    color: var(--col-text) !important;
+    font-family: 'Crimson Text', Georgia, serif !important;
+  }
+  .ui-dialog .ui-dialog-content {
+    color: var(--col-text) !important;
+  }
+  .ui-dialog .ui-dialog-titlebar {
+    background: var(--col-btn-bg) !important;
+    background-color: var(--col-btn-bg) !important;
+    border-bottom: 1px solid var(--col-gold) !important;
+    color: var(--col-gold) !important;
+    font-family: 'Cinzel', 'Times New Roman', serif !important;
+  }
+  .ui-dialog .ui-dialog-title {
+    color: var(--col-gold) !important;
+  }
+  .ui-dialog .ui-dialog-buttonpane {
+    background-color: var(--col-panel) !important;
+    border-top: 1px solid var(--col-gold) !important;
+  }
+  .ui-dialog .ui-button {
+    font-family: 'Cinzel', 'Times New Roman', serif !important;
+    color: var(--col-gold) !important;
+    background: var(--col-input-bg) !important;
+    border: 1px solid var(--col-gold) !important;
+  }
+  .ui-dialog .ui-button:hover {
+    background: var(--col-gold) !important;
+    color: #1a0e05 !important;
+  }
+  .ui-widget-overlay {
+    background: #000 !important;
+    opacity: 0.7 !important;
+  }
+
+  /* Image border */
+  #Image_Logo_Field + a img {
+    border: 2px solid var(--col-gold);
+    max-width: 100%;
+  }
+
   .page-grid {
     display: grid;
     grid-template-columns: 400px 200px 250px auto;
     align-items: start;
+    gap: 0 16px;
   }
   .align-bottom {
     align-self: end;
@@ -274,6 +455,42 @@ $(document).ready(function() {
     display: flex;
     align-items: flex-start;
   }
+  .link-row > div:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+  .link-row > div:last-child {
+    flex: 0 0 75px;
+    padding-left: 10px;
+  }
+  .link-row > div:last-child button {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  #Link_Table {
+    border-collapse: collapse;
+  }
+  #Link_Table td:first-child {
+    width: auto !important;
+  }
+  #Link_Table td:last-child {
+    padding-left: 10px;
+    padding-right: 0;
+  }
+  #Link_Table td:last-child button {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  #Link_Title_Field,
+  #Link_Url_Field {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+#Queries_Select .suggestion-item.suggestion-selected {
+  background-color: #b8962e;
+  color: #1a0e05;
+}
 
 @media (max-width: 600px) {
 
@@ -305,6 +522,19 @@ $(document).ready(function() {
   /* Fluid autocomplete select */
   #Queries_Select {
     width: 100% !important;
+    overflow-y: auto;
+    user-select: none;
+    outline: none;
+  }
+  #Queries_Select .suggestion-item {
+    padding: 1px 3px;
+    white-space: nowrap;
+    cursor: default;
+  }
+  #Queries_Select .suggestion-item:hover,
+  #Queries_Select .suggestion-item.suggestion-selected {
+    background-color: #b8962e;
+    color: #1a0e05;
   }
 
   /* Fluid text inputs */
@@ -372,21 +602,17 @@ $(document).ready(function() {
                 <br>
             </div>
             <div>
-                <select
-                    style="width:180px; height:80px;"
-                    size="10"
-                    id="Queries_Select"
-                    onclick=
-                        "document.getElementById('Query_Field').value=this.options[this.selectedIndex].text;
-                        document.getElementById('perquire').click();
-                        window.open(this.options[this.selectedIndex].value, '_blank').focus();">
-                </select>
+                <div
+                    style="width:180px; height:80px; border: 1px inset; overflow-y: auto; user-select: none;"
+                    tabindex="0"
+                    id="Queries_Select">
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Row 1, Col 2: Previous searches label -->
-    <div class="align-bottom">
+    <div class="align-bottom section-label">
         INQUĪSĪTIŌNĒS PRIŌRĒS
     </div>
 
@@ -434,18 +660,20 @@ $(document).ready(function() {
                     type="text"
                     name="Link_Title_Field"
                     id="Link_Title_Field"
+                    placeholder="TITULUS"
                 />
                 <input
                     type="text"
                     name="Link_Url_Field"
                     id="Link_Url_Field"
+                    placeholder="NEXUS"
                 />
             </div>
             <div>
                 <button onclick="addLink()">ADDE</button>
             </div>
         </div>
-        <table id="Link_Table" style="table-layout: fixed; width: 200px;">
+        <table id="Link_Table" style="table-layout: fixed; width: 250px;">
             <tbody id="Link_Table_Body">
                 {% for i, url in link_urls %}
                     <tr>
@@ -460,7 +688,7 @@ $(document).ready(function() {
     <div>
         <input name="Image_Logo_Field" id="Image_Logo_Field" type="hidden" value="{{image_logo}}">
         <a href="{{image_logo}}" target="_blank">
-            <img src="{{image_logo}}" style="background-color: #A9A9A9" height="240px" align="left">
+            <img src="{{image_logo}}" height="240px">
         </a>
     </div>
 </div>
