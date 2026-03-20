@@ -4,8 +4,6 @@
 #include <iostream>
 #include <tuple>
 #include <thread>
-#include <mutex>
-#include <atomic>
 #include <queue>
 #include <algorithm>
 
@@ -13,7 +11,7 @@ namespace py = pybind11;
 
 struct WordScore
 {
-    std::vector<int> word;
+    int index{};
     double score{};
 
     bool operator<(const WordScore& rhs) const
@@ -46,8 +44,8 @@ public:
         double delete_cost,
         double transpose_cost)
     {
-        m_keys_encoded = keys_encoded;
-        m_cost_matrix = cost_matrix;
+        m_keys_encoded = std::move(keys_encoded);
+        m_cost_matrix = std::move(cost_matrix);
         m_is_key_cost = is_key_cost;
         m_replace_cost = replace_cost;
         m_insert_cost = insert_cost;
@@ -92,8 +90,8 @@ public:
         for (int i = 1; i <= len1; ++i)
         {
             // reset column 0 so that (*rows[cur])[j - 1] works when j == 1
-            (*rows[cur])[0] = i * m_delete_cost; 
-            
+            (*rows[cur])[0] = i * m_delete_cost;
+
             double best_score_this_row = (*rows[cur])[0];
 
             for (int j = 1; j <= len2; ++j)
@@ -157,7 +155,7 @@ public:
     std::vector<std::tuple<std::vector<int>, double>> sort_word_scores(
         std::priority_queue<WordScore, std::vector<WordScore>>& heap)
     {
-        // sort the results from best (lowest) to worst (highest)
+        // pop max-heap: results come out in descending score order
         std::vector<WordScore> word_scores;
         word_scores.reserve(heap.size());
         while (!heap.empty())
@@ -165,19 +163,47 @@ public:
             word_scores.push_back(heap.top());
             heap.pop();
         }
-        std::sort(word_scores.begin(), word_scores.end());
+        // reverse to get ascending (best-first) order
+        std::reverse(word_scores.begin(), word_scores.end());
 
         // convert to the return type: vector of tuples for Python
         std::vector<std::tuple<std::vector<int>, double>> result(word_scores.size());
         for (size_t i = 0; i < word_scores.size(); ++i)
         {
-            result[i] = {word_scores[i].word, word_scores[i].score};
+            result[i] = {m_keys_encoded[word_scores[i].index], word_scores[i].score};
         }
         return result;
     }
 
+    void populate_heap(
+        std::priority_queue<WordScore, std::vector<WordScore>>& heap,
+        const std::vector<int>& target_word_int,
+        const int num_results,
+        const int counter_start,
+        const int counter_stop)
+    {
+        for (int index = counter_start; index < counter_stop; ++index)
+        {
+            std::vector<int>& word = m_keys_encoded[index];
+            double score = key_weighted_damerau_levenshtein(
+                target_word_int,
+                word,
+                ((int)heap.size() < num_results) ? -1.0 : heap.top().score);
+
+            if ((int)heap.size() < num_results)
+            {
+                heap.push({ index, score });
+            }
+            else if (score < heap.top().score)
+            {
+                heap.pop();
+                heap.push({ index, score });
+            }
+        }
+    };
+
     std::vector<std::tuple<std::vector<int>, double>> weighted_damerau_levenshtein(
-        std::vector<int>& target_word_int,
+        const std::vector<int>& target_word_int,
         int num_results)
     {
         num_results = std::max(num_results, 1);
@@ -187,115 +213,95 @@ public:
         // insertion is O(log[num_results])
         std::priority_queue<WordScore, std::vector<WordScore>> heap;
 
-        for (int counter = 0; counter < (int)m_keys_encoded.size(); ++counter)
-        {
-            std::vector<int>& word = m_keys_encoded[counter];
-            double score_to_beat = ((int)heap.size() < num_results) ? -1.0 : heap.top().score;
-            double score = key_weighted_damerau_levenshtein(
-                target_word_int,
-                word,
-                score_to_beat);
-
-            if ((int)heap.size() < num_results)
-            {
-                heap.push({ word, score });
-            }
-            else if (score < heap.top().score)
-            {
-                heap.pop();
-                heap.push({ word, score });
-            }
-        }
+        populate_heap(
+            heap,
+            target_word_int,
+            num_results,
+            0,
+            (int)m_keys_encoded.size());
 
         return sort_word_scores(heap);
     }
 
     std::vector<std::tuple<std::vector<int>, double>> weighted_damerau_levenshtein_multithread(
-        std::vector<int>& target_word_int,
+        const std::vector<int>& target_word_int,
         int num_results)
     {
         int thread_count = (int)std::thread::hardware_concurrency();
         num_results = std::max(num_results, 1);
         num_results = std::min(num_results, (int)(m_keys_encoded.size()));
 
-        std::mutex heap_mutex;
-        std::priority_queue<WordScore, std::vector<WordScore>> heap;
-        // atomic<double> avoids data race: score_to_beat_atomic is read outside
-        // the mutex but written inside it.
-        // relaxed ordering is sufficient — this is a pruning hint,
-        // not a synchronisation point.
-        std::atomic<double> score_to_beat_atomic{ -1.0 };
-
-        auto score_loop = [
-            this,
-            &num_results,
-            &target_word_int,
-            &heap_mutex,
-            &heap,
-            &score_to_beat_atomic](
-            int counter_start,
-            int counter_stop)
-        {
-            for (int counter = counter_start; counter < counter_stop; ++counter)
-            {
-                std::vector<int>& word = m_keys_encoded[counter];
-                double score_to_beat = score_to_beat_atomic.load(std::memory_order_relaxed);
-                double score = key_weighted_damerau_levenshtein(
-                    target_word_int,
-                    word,
-                    score_to_beat);
-                if (score_to_beat >= 0 && score >= score_to_beat)
-                {
-                    continue;
-                }
-
-                std::lock_guard<std::mutex> lock(heap_mutex);
-                if ((int)heap.size() < num_results)
-                {
-                    heap.push({ word, score });
-                    if ((int)heap.size() == num_results)
-                    {
-                        score_to_beat_atomic.store(heap.top().score, std::memory_order_relaxed);
-                    }
-                }
-                else if (score < heap.top().score)
-                {
-                    heap.pop();
-                    heap.push({ word, score });
-                    score_to_beat_atomic.store(heap.top().score, std::memory_order_relaxed);
-                }
-            }
-        };
-
+        // each thread maintains its own heap to avoid synchronization overhead during scoring
+        std::vector<std::priority_queue<WordScore, std::vector<WordScore>>> heaps(thread_count);
         int chunk_size = (int)std::ceil(m_keys_encoded.size() / (double)thread_count);
         int counter_start = 0;
         int counter_stop = 0;
         std::vector<std::thread> threads(thread_count);
+
         for (int i = 0; i < thread_count; ++i)
         {
-            counter_stop = std::min(counter_start + chunk_size, (int)m_keys_encoded.size());
+            if (i == thread_count - 1)
+            {
+                // last thread takes any remaining items due to rounding
+                counter_stop = (int)m_keys_encoded.size();
+            }
+            else
+            {
+                counter_stop = std::min(counter_start + chunk_size, (int)m_keys_encoded.size());
+            }
+
+            if (counter_start >= counter_stop)
+            {
+                break; // no more items to process, can happen if thread_count > m_keys_encoded.size()
+            }
+
             threads[i] = std::thread(
-                score_loop,
+                &WeightDamLeven::populate_heap,
+                this,
+                std::ref(heaps[i]),
+                std::ref(target_word_int),
+                num_results,
                 counter_start,
                 counter_stop);
             counter_start = counter_stop;
         }
+
         for (int i = 0; i < thread_count; ++i)
         {
             threads[i].join();
         }
 
-        return sort_word_scores(heap);
+        // merge thread-local heaps sequentially after all threads have finished
+        std::priority_queue<WordScore, std::vector<WordScore>> merged_heap;
+        for (auto& heap : heaps)
+        {
+            while (!heap.empty())
+            {
+                WordScore word_score = heap.top();
+                heap.pop();
+                if ((int)merged_heap.size() < num_results)
+                {
+                    merged_heap.push(word_score);
+                }
+                else if (word_score.score < merged_heap.top().score)
+                {
+                    merged_heap.pop();
+                    merged_heap.push(word_score);
+                }
+            }
+        }
+
+        return sort_word_scores(merged_heap);
     }
 
     std::tuple<std::vector<int>, double> weighted_damerau_levenshtein_single(
-        std::vector<int>& target_word_int)
+        const std::vector<int>& target_word_int)
     {
         return weighted_damerau_levenshtein(target_word_int, 1)[0];
     }
 
     std::tuple<std::vector<int>, double> weighted_damerau_levenshtein_single_multithread(
-        std::vector<int>& target_word_int)
+        const std::vector<int>& target_word_int)
     {
         return weighted_damerau_levenshtein_multithread(target_word_int, 1)[0];
     }
