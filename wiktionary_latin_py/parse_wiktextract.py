@@ -9,12 +9,12 @@ from tqdm import tqdm
 
 
 class WiktextractParser:
-    DIRECTORY = pathlib.Path(__file__).parent.parent.resolve()
+    DIRECTORY = pathlib.Path(__file__).parent.resolve()
     LINK = r'https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz'
     CHUNK_SIZE = 1024**2
-    WIKTEXTRACT_DATA_GZ = os.path.join(DIRECTORY, "wiktionary_latin_py", "database", os.path.basename(LINK))
-    WIKTEXTRACT_DATA = os.path.join(DIRECTORY, "wiktionary_latin_py", "database", "raw-wiktextract-data.jsonl")
-    LATIN_WORDS = os.path.join(DIRECTORY, "wiktionary_latin_py", "database", "latin_words.txt")
+    WIKTEXTRACT_DATA_GZ = os.path.join(DIRECTORY, "database", os.path.basename(LINK))
+    WIKTEXTRACT_DATA = os.path.join(DIRECTORY, "database", "raw-wiktextract-data.jsonl")
+    LATIN_WORDS = os.path.join(DIRECTORY, "database", "latin_words.txt")
 
     def __init__(self):
         pass

@@ -27,7 +27,9 @@ import numpy as np
 from send2trash import send2trash
 from flask import Flask, request, render_template, make_response, redirect
 from flask_socketio import SocketIO
+
 import weightdamleven
+from parse_wiktextract import WiktextractParser
 
 print(f"weightdamleven library: {weightdamleven.__file__}")
 
@@ -133,6 +135,10 @@ class Latin:
         with open(cls.LATIN_WORDS, 'r', encoding="utf-8") as f:
             latin_words = list(set(word.strip() for word in f.readlines()))
         return latin_words
+
+    def reload_latin_words(self) -> None:
+        self._latin_words = self.read_parsed_latin_words()
+        self._latin_words_encoded = self.calc_latin_words_encoded()
 
     @classmethod
     def calc_char_char_cost(cls) -> defaultdict[tuple[str, str], complex]:
@@ -509,6 +515,41 @@ def on_delete_image(data):
     full_path = os.path.join(full_dir, os.path.basename(image))
     send2trash(full_path)
     socketio.emit('on_delete_image_done', {}, to=request.sid)
+
+
+@socketio.on('reload_word_list')
+def on_reload_word_list(_data):
+    def do_reload(sid):
+        global latin_global, wdl_global, wdl_suggestions_global
+        try:
+            socketio.emit('on_reload_word_list_progress', {'status': 'downloading'}, to=sid)
+            WiktextractParser.parse_latin_word_list_from_url()
+            socketio.emit('on_reload_word_list_progress', {'status': 'reloading'}, to=sid)
+            latin_global.reload_latin_words()
+            wdl_global = weightdamleven.WeightDamLeven(
+                latin_global.get_latin_words_encoded(),
+                latin_global.get_cost_matrix(),
+                is_cost_matrix,
+                replace_cost,
+                insert_cost,
+                insert_cost,
+                delete_cost,
+                transpose_cost)
+            wdl_suggestions_global = weightdamleven.WeightDamLeven(
+                latin_global.get_latin_words_encoded(),
+                latin_global.get_cost_matrix(),
+                is_cost_matrix,
+                replace_cost,
+                insert_cost,
+                append_cost,
+                delete_cost,
+                transpose_cost)
+            socketio.emit('on_reload_word_list_done', {'status': 'done', 'count': len(latin_global._latin_words)}, to=sid)
+        except Exception as e:
+            socketio.emit('on_reload_word_list_done', {'status': 'error', 'message': str(e)}, to=sid)
+
+    sid = request.sid
+    threading.Thread(target=do_reload, args=(sid,), daemon=True).start()
 
 
 if __name__ == "__main__":

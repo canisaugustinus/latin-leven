@@ -275,6 +275,35 @@ $(document).ready(function() {
     }
   });
 });
+
+function renovaWordList() {
+    document.getElementById('renova').disabled = true;
+    document.getElementById('renova').textContent = 'RENOVĀ...';
+    socket.emit('reload_word_list', {});
+}
+
+socket.on('on_reload_word_list_progress', function(data) {
+    const btn = document.getElementById('renova');
+    if (data.status === 'downloading') {
+        btn.textContent = 'LEGŌ...';
+    }
+    else if (data.status === 'reloading') {
+        btn.textContent = 'ONERŌ...';
+    }
+});
+
+socket.on('on_reload_word_list_done', function(data) {
+    const btn = document.getElementById('renova');
+    btn.disabled = false;
+    if (data.status === 'done') {
+        btn.textContent = 'RENOVĀ ✓';
+        setTimeout(() => { btn.textContent = 'RENOVĀ'; }, 3000);
+    } else {
+        btn.textContent = 'ERROR';
+        alert('Reload failed: ' + data.message);
+        setTimeout(() => { btn.textContent = 'RENOVĀ'; }, 3000);
+    }
+});
 </script>
 
 <!doctype html>
@@ -622,6 +651,7 @@ $(document).ready(function() {
     <!-- Row 1, Col 4: Delete image button -->
     <div class="align-bottom">
         <button onclick="deleteImage()">DĒLĒ IMĀGINEM</button>
+        <button id="renova" onclick="renovaWordList()">RENOVĀ</button>
     </div>
 
     <!-- Row 2, Col 1: Results table -->
