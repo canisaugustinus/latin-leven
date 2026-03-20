@@ -14,6 +14,7 @@
 # and finally:
 # make sure weightdamleven.pyi is in site-packages next to the .py file
 
+import threading
 import itertools
 import os
 import subprocess
@@ -552,11 +553,15 @@ def on_reload_word_list(_data):
     threading.Thread(target=do_reload, args=(sid,), daemon=True).start()
 
 
+
 if __name__ == "__main__":
-    print("Ready.")
-    #socketio.run(app, debug=True)
-    host = '0.0.0.0' # localhost
-    port = 5000
     if len(sys.argv) > 1:
-        subprocess.Popen(sys.argv[1:])
-    socketio.run(app, debug=False, host=host, port=port)
+        print("Starting command thread.")
+        DELAY_SECONDS = 0.5
+        timer_thread = threading.Timer(DELAY_SECONDS, lambda: subprocess.Popen(sys.argv[1:]))
+        timer_thread.start()
+
+    #socketio.run(app, debug=True)
+    HOST = '0.0.0.0' # localhost
+    PORT = 5000
+    socketio.run(app, debug=False, host=HOST, port=PORT)
