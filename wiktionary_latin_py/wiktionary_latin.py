@@ -43,6 +43,8 @@ class Latin:
     LINKS = os.path.join(DIRECTORY, "database", "links.txt")
     if not pathlib.Path(LINKS).is_file():
         open(LINKS, 'w').close()
+    LONG_VOWELS = {'ā': 'a', 'ē': 'e', 'ī': 'i', 'ō': 'o', 'ū': 'u',
+                    'Ā': 'A', 'Ē': 'E', 'Ī': 'I', 'Ō': 'O', 'Ū': 'U'}
 
     def __init__(self):
         self._latin_words: list[str] = self.read_parsed_latin_words()  # list of latin words
@@ -226,11 +228,7 @@ class Latin:
     @classmethod
     def convert_to_search_word(cls, word: str) -> str:
         """ Remove long vowels and strip whitespace. """
-        long_vowels_dict = {'ā': 'a', 'ē': 'e', 'ī': 'i', 'ō': 'o', 'ū': 'u'}
-        long_vowels = set(long_vowels_dict.keys())
-        for char in long_vowels:
-            long_vowels_dict[char.upper()] = long_vowels_dict[char].upper()
-        for long, short in long_vowels_dict.items():
+        for long, short in cls.LONG_VOWELS.items():
             word = word.replace(long, short)
         return word.strip()
 
@@ -276,23 +274,25 @@ def query_update_thread_func():
 
     while True:
         with query_update_lock_global:
-            for request_sid in list(query_update_global.keys()):
-                text = query_update_global.pop(request_sid)
-                if not text:
-                    socketio.emit('on_query_update_done', {'latin_words': []}, to=request_sid)
-                    continue
+            pending = list(query_update_global.items())
+            query_update_global.clear()
 
-                text_ints = latin_global.convert_to_search_ints(text)
-                latin_words_scores = wdl_suggestions_global.weighted_damerau_levenshtein_multithread(text_ints, 10)
-                latin_words = defaultdict(lambda: [])
-                for i, (ints, score) in enumerate(latin_words_scores):
-                    latin_words[score].append(''.join([int_char_dict_global[ival] for ival in ints]))
+        for request_sid, text in pending:
+            if not text:
+                socketio.emit('on_query_update_done', {'latin_words': []}, to=request_sid)
+                continue
 
-                suggestions = []
-                for score in latin_words:
-                    for word in sorted(latin_words[score]):
-                        suggestions.append([word, latin_global.create_url(word)])
-                socketio.emit('on_query_update_done', {'suggestions': suggestions}, to=request_sid)
+            text_ints = latin_global.convert_to_search_ints(text)
+            latin_words_scores = wdl_suggestions_global.weighted_damerau_levenshtein_multithread(text_ints, 10)
+            latin_words = defaultdict(lambda: [])
+            for i, (ints, score) in enumerate(latin_words_scores):
+                latin_words[score].append(''.join([int_char_dict_global[ival] for ival in ints]))
+
+            suggestions = []
+            for score in latin_words:
+                for word in sorted(latin_words[score]):
+                    suggestions.append([word, latin_global.create_url(word)])
+            socketio.emit('on_query_update_done', {'suggestions': suggestions}, to=request_sid)
         time.sleep(0.001)
 
 
