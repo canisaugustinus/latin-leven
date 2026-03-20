@@ -285,10 +285,10 @@ function renovaWordList() {
 socket.on('on_reload_word_list_progress', function(data) {
     const btn = document.getElementById('renova');
     if (data.status === 'downloading') {
-        btn.textContent = 'LEGŌ...';
+        btn.textContent = 'ONERŌ...';
     }
     else if (data.status === 'reloading') {
-        btn.textContent = 'ONERŌ...';
+        btn.textContent = 'LEGŌ...';
     }
 });
 
@@ -642,7 +642,7 @@ socket.on('on_reload_word_list_done', function(data) {
 
     <!-- Row 1, Col 2: Previous searches label -->
     <div class="align-bottom section-label">
-        INQUĪSĪTIŌNĒS PRIŌRĒS
+        INQVĪSĪTIŌNĒS PRIŌRĒS
     </div>
 
     <!-- Row 1, Col 3: spacer -->

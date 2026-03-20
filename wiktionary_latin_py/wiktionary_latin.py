@@ -21,12 +21,13 @@ import subprocess
 import sys
 import pathlib
 import random
+from enum import Enum
 import threading
 import time
 from collections import defaultdict
 import numpy as np
 from send2trash import send2trash
-from flask import Flask, request, render_template, make_response, redirect
+from flask import Flask, Response, request, render_template, make_response, redirect
 from flask_socketio import SocketIO
 
 import weightdamleven
@@ -260,6 +261,10 @@ class Latin:
             for title, url in links.items():
                 f.write(f"{url.strip()}, {title.strip()}\n")
 
+class ReloadState(Enum):
+    IDLE = 1
+    DOWNLOAD = 2
+    RELOAD = 3
 
 def query_update_thread_func():
     """ An infinite loop that checks the latest 'query_update' """
@@ -299,6 +304,7 @@ images_remaining_global = {}
 searches_so_far_global = {}
 query_update_lock_global = threading.Lock()
 query_update_global = {}
+reload_state_global = ReloadState.IDLE
 query_update_thread = threading.Thread(target=query_update_thread_func)
 query_update_thread.start()
 
@@ -381,14 +387,14 @@ def add_query_to_set(text: str) -> str:
 
 
 @app.route('/')
-def domus():
+def domus() -> str:
     return render_template(
         r'form_latin.html',
         image_logo=os.path.join(app.config["UPLOAD_FOLDER"], random_image()))
 
 
 @app.route('/perquire')
-def perquire():
+def perquire() -> Response:
     text = get_query_or_random_word()
     response = make_response(render_template(
         r'form_latin.html',
@@ -404,7 +410,7 @@ def perquire():
 
 
 @app.route('/sentio_felix')
-def sentio_felix():
+def sentio_felix() -> Response:
     global latin_global
     global int_char_dict_global
     global wdl_global
@@ -420,7 +426,7 @@ def sentio_felix():
 
 
 @socketio.on('domus')
-def on_domus(data):
+def on_domus(_data):
     global searches_so_far_global
     print(f"'domus'")
     socketio.emit('on_domus_done', {'searches': list(searches_so_far_global.keys())}, to=request.sid)
@@ -520,12 +526,30 @@ def on_delete_image(data):
 
 @socketio.on('reload_word_list')
 def on_reload_word_list(_data):
-    def do_reload(sid):
-        global latin_global, wdl_global, wdl_suggestions_global
+    global reload_state_global
+    if reload_state_global == ReloadState.DOWNLOAD:
+        socketio.emit('on_reload_word_list_progress', {'status': 'downloading'})
+        #socketio.emit('on_reload_word_list_done', {'status': 'busy'}, to=request.sid)
+        return
+    
+    if reload_state_global == ReloadState.RELOAD:
+        socketio.emit('on_reload_word_list_progress', {'status': 'reloading'})
+        #socketio.emit('on_reload_word_list_done', {'status': 'busy'}, to=request.sid)
+        return
+
+    reload_state_global = ReloadState.DOWNLOAD
+
+    def do_reload():
+        global latin_global
+        global wdl_global
+        global wdl_suggestions_global
+        global reload_state_global
+
         try:
-            socketio.emit('on_reload_word_list_progress', {'status': 'downloading'}, to=sid)
+            socketio.emit('on_reload_word_list_progress', {'status': 'downloading'})
             WiktextractParser.parse_latin_word_list_from_url()
-            socketio.emit('on_reload_word_list_progress', {'status': 'reloading'}, to=sid)
+            reload_state_global = ReloadState.RELOAD
+            socketio.emit('on_reload_word_list_progress', {'status': 'reloading'})
             latin_global.reload_latin_words()
             wdl_global = weightdamleven.WeightDamLeven(
                 latin_global.get_latin_words_encoded(),
@@ -545,12 +569,13 @@ def on_reload_word_list(_data):
                 append_cost,
                 delete_cost,
                 transpose_cost)
-            socketio.emit('on_reload_word_list_done', {'status': 'done', 'count': len(latin_global._latin_words)}, to=sid)
+            socketio.emit('on_reload_word_list_done', {'status': 'done', 'count': len(latin_global._latin_words)})
         except Exception as e:
-            socketio.emit('on_reload_word_list_done', {'status': 'error', 'message': str(e)}, to=sid)
+            socketio.emit('on_reload_word_list_done', {'status': 'error', 'message': str(e)})
+        finally:
+            reload_state_global = ReloadState.IDLE
 
-    sid = request.sid
-    threading.Thread(target=do_reload, args=(sid,), daemon=True).start()
+    threading.Thread(target=do_reload, daemon=True).start()
 
 
 
