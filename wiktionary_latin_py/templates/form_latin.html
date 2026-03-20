@@ -133,6 +133,7 @@ $(document).ready(function() {
 
 $(document).ready(function() {
     sendQueryUpdate();
+    $('#Queries_Select').height($('.search-row > div:first-child').outerHeight());
 });
 
 $(document).ready(function() {
@@ -198,7 +199,7 @@ function selectSuggestion(index) {
     items.removeClass('suggestion-selected');
     if (index >= 0 && index < items.length) {
         items.eq(index).addClass('suggestion-selected');
-        //items.eq(index)[0].scrollIntoView({ block: 'nearest' });
+        items.eq(index)[0].scrollIntoView({ block: 'nearest' });
     }
 }
 
@@ -469,7 +470,7 @@ socket.on('on_reload_word_list_done', function(data) {
 
   .page-grid {
     display: grid;
-    grid-template-columns: 400px 200px 250px auto;
+    grid-template-columns: 420px 200px 250px auto;
     align-items: start;
     gap: 0 16px;
   }
@@ -479,21 +480,31 @@ socket.on('on_reload_word_list_done', function(data) {
   .search-row {
     display: flex;
     align-items: flex-start;
+    gap: 8px;
   }
   .link-row {
     display: flex;
-    align-items: flex-start;
+    flex-direction: column;
   }
-  .link-row > div:first-child {
+  .link-url-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .link-url-row input {
     flex: 1;
     min-width: 0;
   }
-  .link-row > div:last-child {
+  .link-url-row button {
     flex: 0 0 75px;
-    padding-left: 10px;
+    box-sizing: border-box;
   }
-  .link-row > div:last-child button {
-    width: 100%;
+  .action-row {
+    display: flex;
+    gap: 8px;
+  }
+  .action-row button {
+    flex: 1;
     box-sizing: border-box;
   }
   #Link_Table {
@@ -530,14 +541,14 @@ socket.on('on_reload_word_list_done', function(data) {
 
   /* Reorder grid children for logical mobile flow:
      1. Search form  2. Results  3. Prev-searches label
-     4. Prev-searches table  5. Links  6. Delete-image btn
-     (image hidden, spacer suppressed) */
-  .page-grid > div:nth-child(2) { order: 3; }  /* label */
-  .page-grid > div:nth-child(3) { order: 7; }  /* spacer */
-  .page-grid > div:nth-child(4) { order: 6; }  /* DĒLĒ IMĀGINEM */
+     4. Prev-searches table  5. Link add form  6. Links table
+     7. DĒLĒ IMĀGINEM / RENOVĀ  8. Image */
+  .page-grid > div:nth-child(2) { order: 3; }  /* prev-searches label */
+  .page-grid > div:nth-child(3) { order: 5; }  /* link add form */
+  .page-grid > div:nth-child(4) { order: 7; }  /* DĒLĒ IMĀGINEM / RENOVĀ */
   .page-grid > div:nth-child(5) { order: 2; }  /* results table */
   .page-grid > div:nth-child(6) { order: 4; }  /* prev-searches table */
-  .page-grid > div:nth-child(7) { order: 5; }  /* link management */
+  .page-grid > div:nth-child(7) { order: 6; }  /* links table */
   .page-grid > div:nth-child(8) { order: 8; }  /* image */
 
   /* Fluid widths for fixed-width tables (inline style needs !important) */
@@ -575,9 +586,19 @@ socket.on('on_reload_word_list_done', function(data) {
   }
 
   /* Stack flex rows vertically on mobile */
-  .search-row,
-  .link-row {
+  .search-row {
     flex-direction: column;
+  }
+
+  /* Stretch both columns of .search-row to full width */
+  .search-row > div {
+    width: 100%;
+  }
+
+  /* PERQVĪRE / SENTIŌ FĒLĪX each take half the row */
+  #perquire,
+  #sentio_felix {
+    flex: 1;
   }
 
   /* Touch-friendly tap targets (44px minimum) */
@@ -613,8 +634,7 @@ socket.on('on_reload_word_list_done', function(data) {
     <div>
         <div class="search-row">
             <div>
-                <input type="submit" name="domus" id="domus" value="DOMVS">
-                <br>
+                <input type="submit" name="domus" id="domus" value="DOMVS" style="display: block; box-sizing: border-box; width: 100%;">
                 <input
                     type="text"
                     name="Query_Field"
@@ -623,16 +643,17 @@ socket.on('on_reload_word_list_done', function(data) {
                     oninput="sendQueryUpdate()"
                     autofocus
                     onfocus="var temp_value=this.value; this.value=''; this.value=temp_value"
+                    style="display: block; box-sizing: border-box; width: 100%;"
                 />
-                <br>
                 <!-- <input type="submit" name="quaere" id="quaere"value="QVAERE"> -->
-                <input type="submit" name="perquire" id="perquire" value="PERQVĪRE">
-                <input type="submit" name="sentio_felix" id="sentio_felix" value="SENTIŌ FĒLĪX" formtarget="_blank">
-                <br>
+                <div style="display:flex; gap:4px; flex-wrap:nowrap;">
+                    <input type="submit" name="perquire" id="perquire" value="PERQVĪRE">
+                    <input type="submit" name="sentio_felix" id="sentio_felix" value="SENTIŌ FĒLĪX" formtarget="_blank">
+                </div>
             </div>
             <div>
                 <div
-                    style="width:180px; height:80px; border: 1px inset; overflow-y: auto; user-select: none;"
+                    style="width:180px; box-sizing: border-box; border: 1px inset; overflow: hidden auto; user-select: none;"
                     tabindex="0"
                     id="Queries_Select">
                 </div>
@@ -645,18 +666,38 @@ socket.on('on_reload_word_list_done', function(data) {
         INQVĪSĪTIŌNĒS PRIŌRĒS
     </div>
 
-    <!-- Row 1, Col 3: spacer -->
-    <div></div>
+    <!-- Row 1, Col 3: Adding links -->
+    <div class="align-bottom">
+        <div class="link-row">
+            <input
+                type="text"
+                name="Link_Title_Field"
+                id="Link_Title_Field"
+                placeholder="TITVLVS"
+            />
+            <div class="link-url-row">
+                <input
+                    type="text"
+                    name="Link_Url_Field"
+                    id="Link_Url_Field"
+                    placeholder="NEXVS"
+                />
+                <button onclick="addLink()">ADDE</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Row 1, Col 4: Delete image button -->
     <div class="align-bottom">
-        <button onclick="deleteImage()">DĒLĒ IMĀGINEM</button>
-        <button id="renova" onclick="renovaWordList()">RENOVĀ</button>
+        <div class="action-row">
+            <button onclick="deleteImage()">DĒLĒ IMĀGINEM</button>
+            <button id="renova" onclick="renovaWordList()">RENOVĀ</button>
+        </div>
     </div>
 
     <!-- Row 2, Col 1: Results table -->
     <div>
-        <table id="Result_Table" style="table-layout: fixed; width: 400px;">
+        <table id="Result_Table" style="table-layout: fixed; width: 420px;">
             <tbody id="Result_Table_Body">
                 {% for i, index, title, url in titles_urls %}
                     <tr>
@@ -684,25 +725,6 @@ socket.on('on_reload_word_list_done', function(data) {
 
     <!-- Row 2, Col 3: Link management -->
     <div>
-        <div class="link-row">
-            <div>
-                <input
-                    type="text"
-                    name="Link_Title_Field"
-                    id="Link_Title_Field"
-                    placeholder="TITULUS"
-                />
-                <input
-                    type="text"
-                    name="Link_Url_Field"
-                    id="Link_Url_Field"
-                    placeholder="NEXUS"
-                />
-            </div>
-            <div>
-                <button onclick="addLink()">ADDE</button>
-            </div>
-        </div>
         <table id="Link_Table" style="table-layout: fixed; width: 250px;">
             <tbody id="Link_Table_Body">
                 {% for i, url in link_urls %}
