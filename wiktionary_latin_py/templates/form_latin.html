@@ -466,6 +466,7 @@ socket.on('on_reload_word_list_done', function(data) {
   #Image_Logo_Field + a img {
     border: 2px solid var(--col-gold);
     max-width: 100%;
+    box-sizing: border-box;
   }
 
   .page-grid {
@@ -740,7 +741,7 @@ socket.on('on_reload_word_list_done', function(data) {
     <div>
         <input name="Image_Logo_Field" id="Image_Logo_Field" type="hidden" value="{{image_logo}}">
         <a href="{{image_logo}}" target="_blank">
-            <img src="{{image_logo}}" width: 100%; height="auto">
+            <img src="{{image_logo}}" style="width: 100%; height: auto;">
         </a>
     </div>
 </div>
