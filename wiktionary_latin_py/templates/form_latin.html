@@ -473,7 +473,7 @@ socket.on('on_reload_word_list_done', function(data) {
     display: grid;
     grid-template-columns: 420px 200px 250px auto;
     align-items: start;
-    gap: 0 16px;
+    gap: 4px 16px;
   }
   .align-bottom {
     align-self: end;
@@ -486,6 +486,7 @@ socket.on('on_reload_word_list_done', function(data) {
   .link-row {
     display: flex;
     flex-direction: column;
+    gap: 4px;
   }
   .link-url-row {
     display: flex;
@@ -510,6 +511,12 @@ socket.on('on_reload_word_list_done', function(data) {
   }
   #Link_Table {
     border-collapse: collapse;
+  }
+  #Link_Table td {
+    border-bottom: none;
+  }
+  #Link_Table tr:first-child td {
+    padding-top: 0;
   }
   #Link_Table td:first-child {
     width: auto !important;
@@ -634,7 +641,7 @@ socket.on('on_reload_word_list_done', function(data) {
     <!-- Row 1, Col 1: Search form -->
     <div>
         <div class="search-row">
-            <div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
                 <input type="submit" name="domus" id="domus" value="DOMVS" style="display: block; box-sizing: border-box; width: 100%;">
                 <input
                     type="text"
