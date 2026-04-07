@@ -199,7 +199,6 @@ function selectSuggestion(index) {
     items.removeClass('suggestion-selected');
     if (index >= 0 && index < items.length) {
         items.eq(index).addClass('suggestion-selected');
-        items.eq(index)[0].scrollIntoView({ block: 'nearest' });
     }
 }
 
